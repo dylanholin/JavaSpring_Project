@@ -1,5 +1,7 @@
-package com.squaregames.api.game;
+package com.squaregames.api.game.api;
 
+import com.squaregames.api.game.api.dto.CatalogEntryDto;
+import com.squaregames.api.game.application.GamePlugin;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;

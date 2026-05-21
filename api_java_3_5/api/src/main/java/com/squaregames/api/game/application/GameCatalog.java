@@ -1,4 +1,4 @@
-package com.squaregames.api.game;
+package com.squaregames.api.game.application;
 
 import java.util.Collection;
 

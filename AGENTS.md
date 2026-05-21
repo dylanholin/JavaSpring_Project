@@ -190,6 +190,73 @@ Comportements à éviter
 
     Modifier le projet au-delà du besoin initial.
 
+Structure du projet Spring Boot
+
+Ce projet Spring Boot est organisé par feature (fonctionnalité métier), avec une séparation en couches
+(api / application / domain / infrastructure) à l'intérieur de chaque feature.
+
+Arborescence actuelle :
+
+src/main/java/com/squaregames/api/
+├── ApiApplication.java            ← classe principale (package racine)
+├── common/                        ← transverse : config, exceptions, sécurité
+│   ├── config/                    ← configurations Spring partagées
+│   ├── exception/                 ← exceptions globales
+│   └── security/                  ← à créer quand Spring Security/JWT arrivera
+└── game/                          ← feature "jeu"
+    ├── api/                       ← couche REST (contrôleurs + DTO)
+    │   ├── GameController.java
+    │   ├── GameCatalogController.java
+    │   └── dto/
+    │       ├── GameCreationParams.java
+    │       ├── GameDto.java
+    │       ├── MoveRequest.java
+    │       ├── TokenMovesDto.java
+    │       ├── PositionDto.java
+    │       └── CatalogEntryDto.java
+    ├── application/               ← couche service + plugins
+    │   ├── GameService.java
+    │   ├── GameServiceImpl.java
+    │   ├── GamePlugin.java
+    │   ├── TicTacToePlugin.java
+    │   ├── ConnectFourPlugin.java
+    │   ├── TaquinPlugin.java
+    │   ├── GameCatalog.java
+    │   └── GameCatalogImpl.java
+    ├── domain/                    ← modèle métier (entités JPA, repositories)
+    └── infrastructure/            ← adapters techniques (JPA, clients externes)
+
+Prochaines features prévues (à créer au moment de l'itération concernée) :
+    - user/                        ← feature "utilisateurs" (itération 4)
+    - common/security/             ← configuration JWT/Security (avec user/)
+
+Règles de génération pour les nouvelles features :
+
+    Avant de coder, proposer l'arborescence exacte des fichiers à créer.
+
+    Chaque feature suit l'organisation en couches :
+    - api/       : contrôleurs REST et DTO (entrée/sortie)
+    - application/ : interfaces et implémentations de services, plugins
+    - domain/    : entités métier, repositories (interfaces)
+    - infrastructure/ : adapters concrets (JPA, API externes)
+
+    Ne pas créer de packages vides par anticipation. Les créer uniquement quand
+    le premier fichier de cette couche est nécessaire.
+
+    Ne pas mettre de logique métier dans les contrôleurs.
+
+    Ne pas exposer directement les entités externes (librairie moteur) dans l'API : utiliser des DTO.
+
+    Les DTO utilisent des records Java (immuables, concis).
+
+    L'injection de dépendances se fait par constructeur (pas @Autowired sur champ).
+
+    Les tests suivent la même arborescence dans src/test/java.
+
+    Pour une petite feature, réduire le nombre de classes mais garder la séparation des responsabilités.
+
+    Si plusieurs structures sont possibles, choisir la plus simple compatible avec la maintenabilité.
+
 Règle finale
 
 Quand plusieurs solutions existent, l'IA doit choisir celle qui est la plus sûre, la plus simple à relire, la plus facile à tester et la moins intrusive pour le projet.

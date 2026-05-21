@@ -1,5 +1,7 @@
-package com.squaregames.api.game;
+package com.squaregames.api.game.api;
 
+import com.squaregames.api.game.api.dto.*;
+import com.squaregames.api.game.application.GameService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Collection;

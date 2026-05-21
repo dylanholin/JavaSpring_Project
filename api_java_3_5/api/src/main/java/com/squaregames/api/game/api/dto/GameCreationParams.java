@@ -1,4 +1,4 @@
-package com.squaregames.api.game;
+package com.squaregames.api.game.api.dto;
 
 public record GameCreationParams(
         String gameType,

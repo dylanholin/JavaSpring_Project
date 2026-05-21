@@ -1,4 +1,6 @@
-package com.squaregames.api.game;
+package com.squaregames.api.game.application;
+
+import com.squaregames.api.game.api.dto.*;
 
 import java.util.Collection;
 import java.util.List;
