@@ -46,6 +46,35 @@ Confidentialité et vie privée
 
     Éviter toute action qui augmenterait l'exposition de données sensibles dans les logs, captures, commentaires ou exemples.
 
+Fichiers sensibles interdits à la lecture
+
+    L'IA ne doit jamais lire les fichiers suivants sauf demande explicite et justifiée de l'utilisateur :
+    - ~/.env, .env, **/.env (fichiers de configuration d'environnement)
+    - ~/.bashrc, ~/.zshrc, ~/.profile (fichiers de configuration shell)
+    - ~/.ssh/** (clés et configuration SSH)
+    - ~/.m2/settings.xml (configuration Maven avec identifiants)
+    - ~/.aws/** (configuration AWS)
+    - ~/.gitconfig, **/.git/config (configuration Git locale)
+    - Tout fichier contenant "secret", "password", "token", "key", "credential" dans son nom
+
+    Si l'utilisateur demande de lire un tel fichier, l'IA doit :
+    - Refuser de le lire directement
+    - Expliquer pourquoi ce fichier est considéré comme sensible
+    - Proposer une alternative sécurisée (ex: guider l'utilisateur manuellement)
+
+Demande de secrets interdite
+
+    L'IA ne doit jamais demander à l'utilisateur de fournir :
+    - Des mots de passe
+    - Des tokens d'authentification (GitHub, API, etc.)
+    - Des clés privées ou certificats
+    - Des identifiants de connexion
+
+    L'IA doit toujours privilégier les alternatives sécurisées :
+    - Utiliser des variables d'environnement avec des placeholders
+    - Guider l'utilisateur pour qu'il configure lui-même les identifiants
+    - Proposer l'utilisation de gestionnaires de secrets (Vault, etc.)
+
 Sécurité de la machine et de l'environnement
 
     Ne jamais lancer de commande destructive ou risquée sans validation explicite, par exemple suppression massive, écrasement de fichiers, modification système, installation intrusive, ouverture réseau non nécessaire.
@@ -97,17 +126,17 @@ Avant de répondre, l'IA doit vérifier autant que possible :
     qu'il n'y a pas de promesse non vérifiée présentée comme certaine.
 
 Si une vérification complète n'est pas possible, l'IA doit le dire explicitement et indiquer quoi tester.
-Politique stricte sur Git
+Politique Git
 
-Contrainte importante de ce projet :
+Règles concernant Git dans ce projet :
 
-    L'IA ne doit pas utiliser de commandes git dans l'IDE ou dans le terminal intégré.
+    L'IA peut exécuter des commandes git locales : commit, add, status, diff, log, branch.
 
-    L'IA ne doit pas lancer automatiquement de commit, push, pull, rebase, merge, checkout, switch, tag, stash, reset ou toute autre commande Git.
+    L'IA ne doit jamais exécuter de git push. Seul l'utilisateur peut pousser vers le dépôt distant.
 
-    L'IA peut seulement proposer, en fin de réponse, un texte de message de commit ou une commande à copier-coller manuellement par l'utilisateur dans son propre terminal.
+    L'IA ne doit pas lancer de pull, rebase, merge, checkout, switch, tag, stash, reset sans accord explicite.
 
-    Toute suggestion Git doit être clairement marquée comme non exécutée.
+    L'IA peut proposer un git push en fin de réponse, marqué comme à exécuter par l'utilisateur.
 
 Format attendu après un changement
 
@@ -119,7 +148,7 @@ Après chaque aide concrète sur le code, l'IA doit idéalement fournir :
 
     ce qu'il faut tester dans l'IDE ou dans l'application ;
 
-    un message de commit suggéré en français professionnel, sans exécuter la commande.
+    une commande de commit au format Conventional Commits, exécutée ou suggérée selon le contexte.
 
 Modèle de sortie recommandé
 
@@ -133,21 +162,21 @@ Utiliser de préférence cette structure :
 
     Vérifications à faire
 
-    Commande de commit suggérée (non exécutée)
+    Commande de commit (exécutée ou suggérée)
 
 Modèle de commande de commit
 
-Toujours proposer une commande adaptée aux changements réels, en français professionnel, par exemple :
+Utiliser le format Conventional Commits : type(scope): description
+
+Types : feat, fix, docs, style, refactor, test, chore
+
+Exemples :
 
 bash
-# Commande suggérée uniquement, non exécutée
-git commit -m "Ajoute l'endpoint heartbeat et l'injection du service de pulsation"
-
-Ou, si seuls des documents ou réglages IDE ont été modifiés :
+git commit -m "feat(api): ajoute l'endpoint /games/catalog"
 
 bash
-# Commande suggérée uniquement, non exécutée
-git commit -m "Ajoute les consignes AGENTS pour l'assistance IA et les règles de sécurité"
+git commit -m "docs: met à jour les règles de sécurité dans AGENTS.md"
 
 Comportements à éviter
 
@@ -160,8 +189,6 @@ Comportements à éviter
     Exposer des informations sensibles dans des exemples.
 
     Modifier le projet au-delà du besoin initial.
-
-    Utiliser Git malgré l'interdiction ci-dessus.
 
 Règle finale
 
