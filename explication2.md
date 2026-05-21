@@ -101,7 +101,7 @@ Jusqu'ici, toutes vos dépendances venaient de Maven Central (public). Le moteur
 
 **Fichiers créés :**
 - `api/.../game/GameCatalog.java` — interface avec `getGameIdentifiers()`
-- `api/.../game/GameCatalogImpl.java` — implémentation qui liste les 3 factories du moteur
+- `api/.../game/GameCatalogImpl.java` — implémentation s'appuyant sur une instance de `TicTacToeGameFactory`
 - `api/.../game/GameCatalogController.java` — endpoint `GET /games/catalog`
 
 **Factories disponibles dans le moteur :**
@@ -113,6 +113,68 @@ Jusqu'ici, toutes vos dépendances venaient de Maven Central (public). Le moteur
 | `TaquinGameFactory` | `15 puzzle` | 1 | 3 à 8 |
 
 **Prérequis avant compilation :** configurer `~/.m2/settings.xml` avec les variables d'environnement `GITHUB_USERNAME` et `GITHUB_TOKEN`, puis re-importer le projet Maven dans l'IDE.
+
+### Implémentation réalisée (étape 2.3)
+
+> 📁 Racine : `api_java_3_5/api/src/main/java/com/squaregames/api/game/`
+
+**Fichiers créés :**
+- `GameCreationParams.java` ✅ — DTO d'entrée (reçoit le JSON du client)
+- `GameDto.java` ✅ — DTO de sortie (envoyé au client en JSON)
+- `MoveRequest.java` ✅ — DTO pour jouer un coup (tokenName, row, col)
+- `TokenMovesDto.java` ✅ — DTO listant les coups possibles d'un token
+- `PositionDto.java` ✅ — DTO représentant une position (row, col)
+- `GameService.java` ✅ — interface du service (contrat)
+- `GameServiceImpl.java` ✅ — implémentation avec stockage en mémoire (`HashMap`)
+- `GameController.java` ✅ — contrôleur REST exposant 5 endpoints
+- `GameFactoryConfig.java` ✅ — configuration Spring déclarant les 3 factories comme beans (`@Bean`)
+
+**Endpoints disponibles :**
+
+| Verbe | URL | Description |
+|---|---|---|
+| `POST` | `/games` | Créer une nouvelle partie |
+| `GET` | `/games` | Lister toutes les parties en cours |
+| `GET` | `/games/{gameId}` | Voir une partie par son ID |
+| `GET` | `/games/{gameId}/moves` | Voir les coups possibles |
+| `POST` | `/games/{gameId}/moves` | Jouer un coup |
+
+**Exemple de requête POST `/games` :**
+```json
+{
+  "gameType": "tictactoe",
+  "playerCount": 2,
+  "boardSize": 3
+}
+```
+
+**Exemple de réponse `GameDto` :**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "gameType": "tictactoe",
+  "playerCount": 2,
+  "boardSize": 3,
+  "status": "ONGOING"
+}
+```
+
+**Points clés de `GameServiceImpl` :**
+- `Map<UUID, Game> games` : stockage en mémoire (les parties sont perdues au redémarrage — base de données à l'itération 3).
+- `Collection<GameFactory> gameFactories` : Spring injecte automatiquement **toutes** les factories déclarées comme beans dans `GameFactoryConfig`.
+- `getPossibleMoves()` : parcourt les tokens sur le plateau et en attente, retourne leurs `getAllowedMoves()`.
+- `playMove()` : trouve le token par son nom, appelle `moveTo()` avec la position cible. L'exception `InvalidPositionException` est convertie en HTTP 400.
+- `findGame()` : méthode utilitaire privée qui factorise la recherche d'une partie + HTTP 404 si absente.
+- `toDto(Game game)` : méthode privée qui convertit un objet `Game` (domaine) en `GameDto` (transport).
+
+**Pourquoi `GameFactoryConfig` est nécessaire :**
+- `TicTacToeGameFactory`, `ConnectFourGameFactory` et `TaquinGameFactory` sont des classes de la librairie externe — elles n'ont pas `@Component`.
+- Spring ne peut pas les détecter automatiquement. Il faut les déclarer explicitement avec `@Bean` dans une classe `@Configuration`.
+- Sans cette config, Spring ne peut pas injecter `Collection<GameFactory>` → l'application démarrerait avec une liste vide.
+
+**Points clés de `GameController` :**
+- `@RequestMapping("/games")` : préfixe commun à tous les endpoints de ce contrôleur. Évite la répétition dans chaque `@GetMapping`/`@PostMapping`.
+- `@PathVariable UUID gameId` : Spring convertit automatiquement la chaîne de l'URL en objet `UUID`.
 
 ---
 

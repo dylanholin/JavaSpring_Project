@@ -1,8 +1,6 @@
 package com.squaregames.api.game;
 
 import fr.le_campus_numerique.square_games.engine.GameFactory;
-import fr.le_campus_numerique.square_games.engine.connectfour.ConnectFourGameFactory;
-import fr.le_campus_numerique.square_games.engine.taquin.TaquinGameFactory;
 import fr.le_campus_numerique.square_games.engine.tictactoe.TicTacToeGameFactory;
 import org.springframework.stereotype.Service;
 
@@ -12,20 +10,14 @@ import java.util.List;
 @Service
 public class GameCatalogImpl implements GameCatalog {
 
-    private final List<GameFactory> gameFactories;
+    private final GameFactory gameFactory;
 
     public GameCatalogImpl() {
-        this.gameFactories = List.of(
-                new TicTacToeGameFactory(),
-                new ConnectFourGameFactory(),
-                new TaquinGameFactory()
-        );
+        this.gameFactory = new TicTacToeGameFactory();
     }
 
     @Override
     public Collection<String> getGameIdentifiers() {
-        return gameFactories.stream()
-                .map(GameFactory::getGameFactoryId)
-                .toList();
+        return List.of(gameFactory.getGameFactoryId());
     }
 }
