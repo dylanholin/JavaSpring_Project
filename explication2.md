@@ -100,9 +100,9 @@ Jusqu'ici, toutes vos dépendances venaient de Maven Central (public). Le moteur
 > `<optional>true</optional>` signifie que cette dépendance ne se propage pas aux projets qui dépendraient du vôtre. Elle reste locale au développement.
 
 **Fichiers créés :**
-- `api/.../game/GameCatalog.java` — interface avec `getGameIdentifiers()`
-- `api/.../game/GameCatalogImpl.java` — implémentation s'appuyant sur une instance de `TicTacToeGameFactory`
-- `api/.../game/GameCatalogController.java` — endpoint `GET /games/catalog`
+- `api/.../game/application/GameCatalog.java` — interface avec `getGameIdentifiers()`
+- `api/.../game/application/GameCatalogImpl.java` — implémentation s'appuyant sur une instance de `TicTacToeGameFactory`
+- `api/.../game/api/GameCatalogController.java` — endpoint `GET /games/catalog`
 
 **Factories disponibles dans le moteur :**
 
@@ -116,17 +116,17 @@ Jusqu'ici, toutes vos dépendances venaient de Maven Central (public). Le moteur
 
 ### Implémentation réalisée (étape 2.3)
 
-> 📁 Racine : `api_java_3_5/api/src/main/java/com/squaregames/api/game/`
+> 📁 Racine : `api_java_3_5/api/src/main/java/com/squaregames/api/game/` (répartis en `api/`, `api/dto/`, `application/`)
 
 **Fichiers créés :**
-- `GameCreationParams.java` ✅ — DTO d'entrée (reçoit le JSON du client)
-- `GameDto.java` ✅ — DTO de sortie (envoyé au client en JSON)
-- `MoveRequest.java` ✅ — DTO pour jouer un coup (tokenName, row, col)
-- `TokenMovesDto.java` ✅ — DTO listant les coups possibles d'un token
-- `PositionDto.java` ✅ — DTO représentant une position (row, col)
-- `GameService.java` ✅ — interface du service (contrat)
-- `GameServiceImpl.java` ✅ — implémentation avec stockage en mémoire (`HashMap`)
-- `GameController.java` ✅ — contrôleur REST exposant 5 endpoints
+- `api/dto/GameCreationParams.java` ✅ — DTO d'entrée (reçoit le JSON du client)
+- `api/dto/GameDto.java` ✅ — DTO de sortie (envoyé au client en JSON)
+- `api/dto/MoveRequest.java` ✅ — DTO pour jouer un coup (tokenName, row, col)
+- `api/dto/TokenMovesDto.java` ✅ — DTO listant les coups possibles d'un token
+- `api/dto/PositionDto.java` ✅ — DTO représentant une position (row, col)
+- `application/GameService.java` ✅ — interface du service (contrat)
+- `application/GameServiceImpl.java` ✅ — implémentation avec stockage en mémoire (`HashMap`)
+- `api/GameController.java` ✅ — contrôleur REST exposant 5 endpoints
 
 **Note :** `GameFactoryConfig.java` a été supprimé en 2.4 — les factories sont maintenant gérées directement par les plugins.
 
@@ -179,14 +179,14 @@ Jusqu'ici, toutes vos dépendances venaient de Maven Central (public). Le moteur
 
 ### Implémentation réalisée (étape 2.4)
 
-> 📁 Racine : `api_java_3_5/api/src/main/java/com/squaregames/api/game/`
+> 📁 Racine : `api_java_3_5/api/src/main/java/com/squaregames/api/game/` (répartis en `api/`, `api/dto/`, `application/`)
 
 **Fichiers créés :**
-- `GamePlugin.java` ✅ — interface avec `getFactory()`, `createGame()`, `getName(Locale)`, `getGameType()`
-- `TicTacToePlugin.java` ✅ — plugin Morpion avec `@Value` et `MessageSource`
-- `ConnectFourPlugin.java` ✅ — plugin Puissance 4 avec `@Value` et `MessageSource`
-- `TaquinPlugin.java` ✅ — plugin Taquin avec `@Value` et `MessageSource`
-- `CatalogEntryDto.java` ✅ — DTO pour une entrée du catalogue (gameType + nom traduit)
+- `application/GamePlugin.java` ✅ — interface avec `getFactory()`, `createGame()`, `getName(Locale)`, `getGameType()`
+- `application/TicTacToePlugin.java` ✅ — plugin Morpion avec `@Value` et `MessageSource`
+- `application/ConnectFourPlugin.java` ✅ — plugin Puissance 4 avec `@Value` et `MessageSource`
+- `application/TaquinPlugin.java` ✅ — plugin Taquin avec `@Value` et `MessageSource`
+- `api/dto/CatalogEntryDto.java` ✅ — DTO pour une entrée du catalogue (gameType + nom traduit)
 
 **Fichiers de ressources créés :**
 - `src/main/resources/application.properties` ✅ — valeurs par défaut (`game.tictactoe.default-player-count=2`, etc.)
@@ -300,7 +300,7 @@ Requête HTTP → Controller → Service → Moteur de jeu
 
 ### Exemple concret
 
-> 📁 `.../game/GameCreationParams.java` 📝 — DTO, à créer à l'étape 2.3
+> 📁 `.../game/api/dto/GameCreationParams.java` 📝 — DTO, à créer à l'étape 2.3
 
 ```java
 // DTO pour la création d'une partie
@@ -331,7 +331,7 @@ public class GameController {
 }
 ```
 
-> 📁 `.../game/GameController.java` 📝 — Controller, à créer à l'étape 2.3
+> 📁 `.../game/api/GameController.java` 📝 — Controller, à créer à l'étape 2.3
 
 ### Syntaxe Java et Spring décryptée
 
@@ -406,7 +406,7 @@ public class GameController {
 
 Une interface simple qui liste les jeux disponibles :
 
-> 📁 `.../game/GameCatalog.java` ✅
+> 📁 `.../game/application/GameCatalog.java` ✅
 
 ```java
 public interface GameCatalog {
@@ -426,7 +426,7 @@ Son implémentation (`GameCatalogImpl`) s'appuie sur les `GameFactory` du moteur
 Le moteur est générique : il ne sait pas comment s'appelle un jeu en français, ni quels sont les paramètres par défaut.  
 C'est le rôle du **plugin** : enrichir chaque type de jeu avec des **données de présentation**.
 
-> 📁 `.../game/GamePlugin.java` ✅
+> 📁 `.../game/application/GamePlugin.java` ✅
 
 ```java
 public interface GamePlugin {
@@ -446,7 +446,7 @@ Chaque jeu a son plugin : `TicTacToePlugin`, `ConnectFourPlugin`, `TaquinPlugin`
 
 ### Injection automatique de tous les plugins
 
-> 📁 `.../game/GameServiceImpl.java` ✅
+> 📁 `.../game/application/GameServiceImpl.java` ✅
 
 ```java
 @Service
@@ -487,7 +487,7 @@ game.connectfour.default-board-size=7
 
 ### L'injection avec @Value
 
-> 📁 `.../game/TicTacToePlugin.java` 📝 — plugin, à créer à l'étape 2.4
+> 📁 `.../game/application/TicTacToePlugin.java` 📝 — plugin, à créer à l'étape 2.4
 
 ```java
 @Component
@@ -551,7 +551,7 @@ game.taquin.name=Fifteen Puzzle
 
 ### L'utilisation dans un plugin
 
-> 📁 `.../game/TicTacToePlugin.java` 📝 — même fichier que section 5, version enrichie avec MessageSource
+> 📁 `.../game/application/TicTacToePlugin.java` 📝 — même fichier que section 5, version enrichie avec MessageSource
 
 ```java
 @Component
@@ -649,6 +649,8 @@ api_java_3_5/api/
 │   ├── <dependency> engine (moteur de jeu)
 │   └── <repository> GitHub Packages privé
 │
+├── games.http 📝
+│
 ├── src/main/resources/
 │   ├── application.properties 📝
 │   ├── messages.properties 📝
@@ -659,24 +661,31 @@ api_java_3_5/api/
     ├── HeartbeatController.java ✅
     ├── HeartbeatSensor.java ✅
     ├── RandomHeartbeat.java ✅
-    ├── game/
-    │   ├── GameCatalog.java ✅
-    │   ├── GameCatalogImpl.java ✅
-    │   ├── GameCatalogController.java ✅
-    │   ├── GameCreationParams.java ✅
-    │   ├── GameDto.java ✅
-    │   ├── MoveRequest.java ✅
-    │   ├── TokenMovesDto.java ✅
-    │   ├── PositionDto.java ✅
-    │   ├── GameController.java ✅
-    │   ├── GameService.java ✅
-    │   ├── GameServiceImpl.java ✅
-    │   ├── GamePlugin.java ✅
-    │   ├── TicTacToePlugin.java ✅
-    │   ├── ConnectFourPlugin.java ✅
-    │   ├── TaquinPlugin.java ✅
-    │   ├── CatalogEntryDto.java ✅
-    └── games.http 📝
+    ├── common/
+    │   ├── config/                    (prêt pour configs partagées)
+    │   └── exception/                (prêt pour exceptions globales)
+    └── game/
+        ├── api/
+        │   ├── GameController.java ✅
+        │   ├── GameCatalogController.java ✅
+        │   └── dto/
+        │       ├── GameCreationParams.java ✅
+        │       ├── GameDto.java ✅
+        │       ├── MoveRequest.java ✅
+        │       ├── TokenMovesDto.java ✅
+        │       ├── PositionDto.java ✅
+        │       └── CatalogEntryDto.java ✅
+        ├── application/
+        │   ├── GameCatalog.java ✅
+        │   ├── GameCatalogImpl.java ✅
+        │   ├── GameService.java ✅
+        │   ├── GameServiceImpl.java ✅
+        │   ├── GamePlugin.java ✅
+        │   ├── TicTacToePlugin.java ✅
+        │   ├── ConnectFourPlugin.java ✅
+        │   └── TaquinPlugin.java ✅
+        ├── domain/                    (prêt pour entités JPA)
+        └── infrastructure/            (prêt pour adapters JPA)
 
 ~/.m2/settings.xml 📝 (hors projet)
 └── <server> github → identifiants GitHub
