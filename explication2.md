@@ -289,9 +289,10 @@ public class GameController {
 - Cette conversion s'appelle la **désérialisation** — elle est faite par Jackson, inclus dans `spring-boot-starter-web`.
 - Si le JSON est mal formé ou ne correspond pas aux champs du record, Spring renvoie une erreur 400.
 
-**`@PathVariable String gameId` — extraire une partie de l'URL**
+**`@PathVariable UUID gameId` — Spring convertit automatiquement le type**
 - Lie la variable `{gameId}` de l'URL au paramètre Java `gameId`.
 - Le nom du paramètre Java doit correspondre au nom entre accolades dans l'URL.
+- Spring est capable de convertir automatiquement une chaîne en `UUID`, `int`, `long`, etc. Si la conversion échoue (ex: "abc" vers `UUID`), Spring retourne une erreur 400.
 
 **`private final GameService gameService` — un champ immuable**
 - `final` garantit que la référence ne peut pas être modifiée après la construction. C'est une bonne pratique pour les dépendances injectées.
@@ -305,6 +306,33 @@ public class GameController {
 
 - Si vous exposez directement l'objet `Game` du moteur, vous couplez votre API à la librairie. Le jour où la librairie change, votre API casse.
 - Les DTO vous permettent de **choisir exactement ce que vous exposez** (masquer des champs internes, renommer des propriétés, ajouter des informations calculées).
+
+### Syntaxe avancée introduite dans GameServiceImpl
+
+**`Stream.concat(stream1, stream2)` — fusionner deux flux**
+- Combine deux `Stream` en un seul. Ici, on fusionne les tokens sur le plateau (`game.getBoard().values()`) et les tokens en attente (`game.getRemainingTokens()`).
+- Cela permet de parcourir tous les tokens d'un jeu en une seule opération, quel que soit leur emplacement.
+
+**`CellPosition` — une position sur le plateau**
+- Classe fournie par le moteur. Elle contient deux champs : `x()` (colonne) et `y()` (ligne).
+- `new CellPosition(row, col)` crée une position. Attention : `x` = colonne, `y` = ligne.
+- `token.getPosition()` retourne `null` si le token n'est pas sur le plateau (token en attente).
+
+**`InvalidPositionException` — coup invalide**
+- Levée par `token.moveTo()` quand la position demandée n'est pas dans `getAllowedMoves()`.
+- On la capture avec `try-catch` et on la convertit en `ResponseStatusException` pour renvoyer HTTP 400 au client.
+
+**`ResponseStatusException` — erreur HTTP explicite**
+- Exception Spring qui permet de retourner un code HTTP spécifique (400, 404…) avec un message.
+- `new ResponseStatusException(HttpStatus.NOT_FOUND, "message")` → HTTP 404.
+- `new ResponseStatusException(HttpStatus.BAD_REQUEST, "message")` → HTTP 400.
+- Plus propre que `IllegalArgumentException` qui produit un HTTP 500 générique.
+
+**`@Configuration` et `@Bean` — déclarer manuellement un bean Spring**
+- `@Configuration` : indique que la classe contient des méthodes `@Bean`.
+- `@Bean` sur une méthode : Spring appelle cette méthode au démarrage et enregistre l'objet retourné comme un bean.
+- Utilisé dans `GameFactoryConfig` car les factories du moteur n'ont pas `@Component` (on ne peut pas modifier la librairie externe).
+- Équivalent à écrire `@Component` sur la classe, mais sans toucher au code source de la librairie.
 
 ---
 
@@ -501,6 +529,8 @@ Dans votre contrôleur, vous pouvez récupérer la `Locale` avec `LocaleContextH
 | `@RestController` | Expose une classe comme API REST (JSON) | `public class GameController` |
 | `@Service` | Déclare une classe de logique métier | `public class GameServiceImpl` |
 | `@Component` | Bean Spring générique | `public class TicTacToePlugin` |
+| `@Configuration` | Classe contenant des définitions de beans | `public class GameFactoryConfig` |
+| `@Bean` | Déclare un bean manuellement (méthode) | `@Bean public GameFactory ticTacToeGameFactory()` |
 | `@Value("${...}")` | Injecte une propriété externe | `@Value("${game.tictactoe.default-player-count}")` |
 | `@PostMapping("/url")` | Écoute les requêtes POST | `@PostMapping("/games")` |
 | `@GetMapping("/url")` | Écoute les requêtes GET | `@GetMapping("/games/{id}")` |
@@ -518,8 +548,11 @@ Dans votre contrôleur, vous pouvez récupérer la `Locale` avec `LocaleContextH
 | `private final` | Champ immuable, initialisé une fois dans le constructeur |
 | `List<X>` | Liste typée — Spring injecte tous les beans de type X |
 | `Collection<X>` | Interface parente de List/Set, plus générique |
+| `Stream.concat(a, b)` | Fusionne deux flux en un seul |
+| `CellPosition` | Position (x=colonne, y=ligne) fournie par le moteur |
 | `Locale` | Représente une langue/région (ex: `Locale.FRENCH`) |
 | `UUID` | Identifiant universel unique (ex: `550e8400-e29b-...`) |
+| `try-catch` | Capture une exception pour la traiter (ex: `InvalidPositionException`) |
 
 ### Syntaxe Maven (pom.xml)
 
@@ -565,11 +598,15 @@ api_java_3_5/api/
     │   ├── GameCatalog.java ✅
     │   ├── GameCatalogImpl.java ✅
     │   ├── GameCatalogController.java ✅
-    │   ├── GameCreationParams.java 📝
-    │   ├── GameDto.java 📝
-    │   ├── GameController.java 📝
-    │   ├── GameService.java 📝
-    │   ├── GameServiceImpl.java 📝
+    │   ├── GameCreationParams.java ✅
+    │   ├── GameDto.java ✅
+    │   ├── MoveRequest.java ✅
+    │   ├── TokenMovesDto.java ✅
+    │   ├── PositionDto.java ✅
+    │   ├── GameController.java ✅
+    │   ├── GameService.java ✅
+    │   ├── GameServiceImpl.java ✅
+    │   ├── GameFactoryConfig.java ✅
     │   ├── GamePlugin.java 📝
     │   ├── TicTacToePlugin.java 📝
     │   ├── ConnectFourPlugin.java 📝
