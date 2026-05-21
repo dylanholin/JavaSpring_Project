@@ -48,3 +48,29 @@ Exemple mental simple : un contrôleur `UserController` reçoit `GET /users`, ap
 Pour une première journée d'apprentissage, le plus utile est de comprendre dans cet ordre : `@SpringBootApplication`, les contrôleurs REST, les services, les beans, l'injection de dépendances, puis la configuration via `application.properties` ou `application.yml`.  
 Il faut aussi retenir que les starters Spring Boot servent à ajouter rapidement des blocs techniques cohérents, comme le web ou l'accès aux données, sans assembler manuellement toutes les bibliothèques nécessaires.  
 Si les notions de conteneur Spring, bean, injection de dépendances, autoconfiguration et architecture en couches sont claires, alors le socle essentiel de Spring Boot est déjà en place.
+
+## Erreurs fréquentes au début
+
+### Whitelabel Error Page / 404
+Cette erreur apparaît quand aucune route ne correspond à l’URL demandée.  
+Dans mon cas, cela voulait dire que `/` n’était pas encore défini.
+
+### Port 8080 déjà utilisé
+Si Spring Boot affiche `Adresse déjà utilisée`, cela veut dire qu’un autre programme occupe déjà le port 8080.  
+Il faut alors arrêter l’ancien processus ou changer temporairement le port.
+
+### À retenir
+Une erreur au démarrage ne veut pas toujours dire que le code est faux.  
+Elle peut aussi venir de l’environnement, du port réseau ou d’un composant manquant.
+
+## Tester son API (1.3 - Test de l'endpoint)
+
+Pour valider que l'API fonctionne, on ne se contente pas seulement du navigateur. Le navigateur effectue uniquement des requêtes `GET`. Pour la suite du développement de l'API (requêtes POST, PUT, DELETE, ajout de headers, d'authentification...), des outils spécialisés sont nécessaires.
+
+### Outils disponibles :
+- **Le navigateur** : Très basique, sert juste à s'assurer qu'une route GET répond (ex: `http://localhost:8080/heartbeat`).
+- **Fichiers .http (IDE)** : Permettent de lancer rapidement des requêtes textuelles depuis IntelliJ ou VS Code (via l'extension REST Client).
+- **Postman ou Bruno** : Ce sont de véritables clients API professionnels. **Bruno** est une alternative moderne, très légère et open-source face à Postman.
+
+### Ce qu'il faut faire :
+Installer **Bruno** (ou Postman), créer une nouvelle requête HTTP de type `GET` vers l'URL `http://localhost:8080/heartbeat`, et l'exécuter. Cela valide le dernier livrable de votre itération 1 !
