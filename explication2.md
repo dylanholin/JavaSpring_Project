@@ -127,7 +127,8 @@ Jusqu'ici, toutes vos dépendances venaient de Maven Central (public). Le moteur
 - `GameService.java` ✅ — interface du service (contrat)
 - `GameServiceImpl.java` ✅ — implémentation avec stockage en mémoire (`HashMap`)
 - `GameController.java` ✅ — contrôleur REST exposant 5 endpoints
-- `GameFactoryConfig.java` ✅ — configuration Spring déclarant les 3 factories comme beans (`@Bean`)
+
+**Note :** `GameFactoryConfig.java` a été supprimé en 2.4 — les factories sont maintenant gérées directement par les plugins.
 
 **Endpoints disponibles :**
 
@@ -161,20 +162,83 @@ Jusqu'ici, toutes vos dépendances venaient de Maven Central (public). Le moteur
 
 **Points clés de `GameServiceImpl` :**
 - `Map<UUID, Game> games` : stockage en mémoire (les parties sont perdues au redémarrage — base de données à l'itération 3).
-- `Collection<GameFactory> gameFactories` : Spring injecte automatiquement **toutes** les factories déclarées comme beans dans `GameFactoryConfig`.
+- `Collection<GameFactory> gameFactories` : remplacé par `List<GamePlugin> plugins` en 2.4. Spring injecte automatiquement tous les `@Component` qui implémentent `GamePlugin`.
 - `getPossibleMoves()` : parcourt les tokens sur le plateau et en attente, retourne leurs `getAllowedMoves()`.
 - `playMove()` : trouve le token par son nom, appelle `moveTo()` avec la position cible. L'exception `InvalidPositionException` est convertie en HTTP 400.
 - `findGame()` : méthode utilitaire privée qui factorise la recherche d'une partie + HTTP 404 si absente.
 - `toDto(Game game)` : méthode privée qui convertit un objet `Game` (domaine) en `GameDto` (transport).
 
-**Pourquoi `GameFactoryConfig` est nécessaire :**
-- `TicTacToeGameFactory`, `ConnectFourGameFactory` et `TaquinGameFactory` sont des classes de la librairie externe — elles n'ont pas `@Component`.
-- Spring ne peut pas les détecter automatiquement. Il faut les déclarer explicitement avec `@Bean` dans une classe `@Configuration`.
-- Sans cette config, Spring ne peut pas injecter `Collection<GameFactory>` → l'application démarrerait avec une liste vide.
+**Pourquoi `GameFactoryConfig` a été supprimé :**
+- Les plugins (`TicTacToePlugin`, etc.) sont annotés `@Component` → Spring les détecte automatiquement.
+- Chaque plugin possède sa propre factory en champ privé — pas besoin de beans séparés.
+- `GameServiceImpl` injecte maintenant `List<GamePlugin>` au lieu de `Collection<GameFactory>`.
 
 **Points clés de `GameController` :**
 - `@RequestMapping("/games")` : préfixe commun à tous les endpoints de ce contrôleur. Évite la répétition dans chaque `@GetMapping`/`@PostMapping`.
 - `@PathVariable UUID gameId` : Spring convertit automatiquement la chaîne de l'URL en objet `UUID`.
+
+### Implémentation réalisée (étape 2.4)
+
+> 📁 Racine : `api_java_3_5/api/src/main/java/com/squaregames/api/game/`
+
+**Fichiers créés :**
+- `GamePlugin.java` ✅ — interface avec `getFactory()`, `createGame()`, `getName(Locale)`, `getGameType()`
+- `TicTacToePlugin.java` ✅ — plugin Morpion avec `@Value` et `MessageSource`
+- `ConnectFourPlugin.java` ✅ — plugin Puissance 4 avec `@Value` et `MessageSource`
+- `TaquinPlugin.java` ✅ — plugin Taquin avec `@Value` et `MessageSource`
+- `CatalogEntryDto.java` ✅ — DTO pour une entrée du catalogue (gameType + nom traduit)
+
+**Fichiers de ressources créés :**
+- `src/main/resources/application.properties` ✅ — valeurs par défaut (`game.tictactoe.default-player-count=2`, etc.)
+- `src/main/resources/messages.properties` ✅ — noms en français (défaut)
+- `src/main/resources/messages_en.properties` ✅ — noms en anglais
+
+**Fichiers modifiés :**
+- `GameServiceImpl.java` — injecte `List<GamePlugin>` au lieu de `Collection<GameFactory>`
+- `GameCatalogController.java` — utilise `GamePlugin` + `LocaleContextHolder` pour les noms traduits
+- `GameFactoryConfig.java` — supprimé (devenu inutile)
+
+**Architecture finale :**
+```
+Requête HTTP → Controller → Service → Plugin → Moteur de jeu
+                    ↑            ↑         ↑
+                  DTO          DTO      @Value + MessageSource
+```
+
+**Points clés de `GamePlugin` :**
+- `getFactory()` : expose la factory interne pour permettre la création avec paramètres spécifiques (POST /games).
+- `createGame()` : crée une partie avec les valeurs par défaut (sans paramètres).
+- `getName(Locale)` : retourne le nom traduit du jeu via `MessageSource`.
+- `getGameType()` : retourne l'identifiant unique du jeu (doit correspondre au `gameType` envoyé par le client).
+
+**Points clés des plugins :**
+- `@Component` : enregistre le plugin comme bean Spring → automatiquement injecté dans `List<GamePlugin>`.
+- `@Value("${...}")` : lit les valeurs par défaut depuis `application.properties`. Changez le fichier, pas le code.
+- `MessageSource` : injecté par constructeur, utilisé dans `getName()` pour lire `messages.properties`.
+- La factory est stockée comme champ `private final` — créée une seule fois.
+
+**Points clés de `GameCatalogController` (v2) :**
+- `List<GamePlugin> plugins` : Spring injecte automatiquement tous les plugins.
+- `LocaleContextHolder.getLocale()` : récupère la locale de la requête HTTP courante (basée sur le header `Accept-Language`).
+- Retourne une `List<CatalogEntryDto>` avec le `gameType` et le `name` traduit.
+
+**Exemple de réponse `GET /games/catalog` (Accept-Language: fr) :**
+```json
+[
+  {"gameType": "tictactoe", "name": "Morpion"},
+  {"gameType": "connect4", "name": "Puissance 4"},
+  {"gameType": "15 puzzle", "name": "Taquin"}
+]
+```
+
+**Exemple de réponse `GET /games/catalog` (Accept-Language: en) :**
+```json
+[
+  {"gameType": "tictactoe", "name": "Tic Tac Toe"},
+  {"gameType": "connect4", "name": "Connect Four"},
+  {"gameType": "15 puzzle", "name": "Fifteen Puzzle"}
+]
+```
 
 ---
 
@@ -362,10 +426,11 @@ Son implémentation (`GameCatalogImpl`) s'appuie sur les `GameFactory` du moteur
 Le moteur est générique : il ne sait pas comment s'appelle un jeu en français, ni quels sont les paramètres par défaut.  
 C'est le rôle du **plugin** : enrichir chaque type de jeu avec des **données de présentation**.
 
-> 📁 `.../game/GamePlugin.java` 📝 — interface, à créer à l'étape 2.4
+> 📁 `.../game/GamePlugin.java` ✅
 
 ```java
 public interface GamePlugin {
+    GameFactory getFactory();              // expose la factory pour création avec paramètres
     Game createGame();                    // crée avec les paramètres par défaut
     String getName(Locale locale);        // nom traduit du jeu
     String getGameType();                 // identifiant unique ("tictactoe", "connectfour"...)
@@ -381,7 +446,7 @@ Chaque jeu a son plugin : `TicTacToePlugin`, `ConnectFourPlugin`, `TaquinPlugin`
 
 ### Injection automatique de tous les plugins
 
-> 📁 `.../game/GameServiceImpl.java` 📝 — service, à créer à l'étape 2.3
+> 📁 `.../game/GameServiceImpl.java` ✅
 
 ```java
 @Service
@@ -606,11 +671,11 @@ api_java_3_5/api/
     │   ├── GameController.java ✅
     │   ├── GameService.java ✅
     │   ├── GameServiceImpl.java ✅
-    │   ├── GameFactoryConfig.java ✅
-    │   ├── GamePlugin.java 📝
-    │   ├── TicTacToePlugin.java 📝
-    │   ├── ConnectFourPlugin.java 📝
-    │   └── TaquinPlugin.java 📝
+    │   ├── GamePlugin.java ✅
+    │   ├── TicTacToePlugin.java ✅
+    │   ├── ConnectFourPlugin.java ✅
+    │   ├── TaquinPlugin.java ✅
+    │   ├── CatalogEntryDto.java ✅
     └── games.http 📝
 
 ~/.m2/settings.xml 📝 (hors projet)

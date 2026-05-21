@@ -2,7 +2,6 @@ package com.squaregames.api.game;
 
 import fr.le_campus_numerique.square_games.engine.CellPosition;
 import fr.le_campus_numerique.square_games.engine.Game;
-import fr.le_campus_numerique.square_games.engine.GameFactory;
 import fr.le_campus_numerique.square_games.engine.InvalidPositionException;
 import fr.le_campus_numerique.square_games.engine.Token;
 import org.springframework.http.HttpStatus;
@@ -16,20 +15,20 @@ import java.util.stream.Stream;
 public class GameServiceImpl implements GameService {
 
     private final Map<UUID, Game> games = new HashMap<>();
-    private final Collection<GameFactory> gameFactories;
+    private final List<GamePlugin> plugins;
 
-    public GameServiceImpl(Collection<GameFactory> gameFactories) {
-        this.gameFactories = gameFactories;
+    public GameServiceImpl(List<GamePlugin> plugins) {
+        this.plugins = plugins;
     }
 
     @Override
     public GameDto createGame(GameCreationParams params) {
-        GameFactory factory = gameFactories.stream()
-                .filter(f -> f.getGameFactoryId().equals(params.gameType()))
+        GamePlugin plugin = plugins.stream()
+                .filter(p -> p.getGameType().equals(params.gameType()))
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Type de jeu inconnu : " + params.gameType()));
 
-        Game game = factory.createGame(params.playerCount(), params.boardSize());
+        Game game = plugin.getFactory().createGame(params.playerCount(), params.boardSize());
         games.put(game.getId(), game);
         return toDto(game);
     }
