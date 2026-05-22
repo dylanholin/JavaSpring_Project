@@ -2,6 +2,7 @@ package com.squaregames.api.game.infrastructure;
 
 import com.squaregames.api.game.application.GameDao;
 import fr.le_campus_numerique.square_games.engine.Game;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
 
 import java.util.*;
@@ -10,7 +11,9 @@ import java.util.*;
  * Implémentation en mémoire du DAO.
  * Utilise une HashMap pour stocker les parties.
  * Les données sont perdues au redémarrage de l'application.
+ * @Primary car c'est l'implémentation par défaut (JDBC/JPA activables via profils)
  */
+@Primary
 @Repository
 public class InMemoryGameDao implements GameDao {
 

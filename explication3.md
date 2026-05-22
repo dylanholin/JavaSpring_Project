@@ -372,19 +372,152 @@ Password : (vide)
 
 **Objectif** : utiliser Spring Data JPA pour ne plus écrire de SQL manuellement.
 
-**Étapes** :
-1. Ajouter la dépendance `spring-boot-starter-data-jpa`
-2. Créer les entités JPA dans `game/domain` :
-   - `GameEntity` avec `@Id`, `@Entity`
-   - `GameTokenEntity` pour les tokens avec `@OneToMany`
-3. Créer `GameEntityRepository` qui étend `JpaRepository<GameEntity, String>`
-4. Créer `JpaGameDao` qui implémente `GameDao` en utilisant le repository
-5. Implémenter les conversions `Game ↔ GameEntity`
+### Étapes réalisées
 
-**Annotations JPA clés** :
-- `@Entity` : marque une classe comme entité persistante
-- `@Id` : identifiant primaire
-- `@OneToMany(cascade = CascadeType.ALL)` : relation avec suppression en cascade
+**1. Ajout de la dépendance Maven** (`pom.xml`) :
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-jpa</artifactId>
+</dependency>
+```
+
+**2. Création des entités JPA** (`game/domain/`) :
+
+**`GameEntity.java`** :
+```java
+@Entity
+@Table(name = "games")
+public class GameEntity {
+    @Id
+    @Column(length = 36)
+    public String id;
+
+    @Column(name = "factory_id", nullable = false)
+    public String factoryId;
+
+    @Column(name = "board_size", nullable = false)
+    public int boardSize;
+
+    @Column(name = "player_count", nullable = false)
+    public int playerCount;
+
+    @Column(nullable = false, length = 20)
+    public String status;
+
+    @OneToMany(mappedBy = "game", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    public List<GameTokenEntity> tokens = new ArrayList<>();
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = Instant.now();
+        updatedAt = Instant.now();
+    }
+}
+```
+
+**`GameTokenEntity.java`** :
+```java
+@Entity
+@Table(name = "game_tokens")
+public class GameTokenEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    public Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "game_id", nullable = false)
+    public GameEntity game;
+
+    @Column(name = "token_name", nullable = false, length = 10)
+    public String tokenName;
+
+    @Column(name = "owner_id", length = 36)
+    public String ownerId;
+
+    @Column(name = "x_position")
+    public Integer xPosition;
+
+    @Column(name = "y_position")
+    public Integer yPosition;
+
+    @Column(name = "is_on_board")
+    public boolean isOnBoard;
+
+    @Column(name = "is_removed")
+    public boolean isRemoved;
+}
+```
+
+**3. Création du Repository** (`GameEntityRepository.java`) :
+```java
+@Repository
+public interface GameEntityRepository extends JpaRepository<GameEntity, String> {
+    // Aucune méthode nécessaire — Spring Data fournit CRUD automatiquement
+}
+```
+
+**4. Implémentation `JpaGameDao`** (`game/infrastructure/JpaGameDao.java`) :
+```java
+@Repository
+public class JpaGameDao implements GameDao {
+
+    private final GameEntityRepository repository;
+
+    public JpaGameDao(GameEntityRepository repository) {
+        this.repository = repository;
+    }
+
+    @Override
+    public Collection<Game> findAll() {
+        List<Game> games = new ArrayList<>();
+        for (GameEntity entity : repository.findAll()) {
+            games.add(convertToGame(entity));
+        }
+        return games;
+    }
+
+    @Override
+    public Optional<Game> findById(UUID gameId) {
+        Optional<GameEntity> entity = repository.findById(gameId.toString());
+        return entity.map(this::convertToGame);
+    }
+
+    @Override
+    public Game upsert(Game game) {
+        GameEntity entity = convertToEntity(game);
+        repository.save(entity);  // Insert ou Update automatique
+        return game;
+    }
+
+    @Override
+    public void delete(UUID gameId) {
+        repository.deleteById(gameId.toString());
+    }
+}
+```
+
+### Avantages de JPA vs JDBC
+
+| Aspect | JDBC | JPA |
+|--------|------|-----|
+| **SQL** | Explicite (écrit à la main) | Généré automatiquement |
+| **CRUD** | Méthodes avec `JdbcTemplate` | Hérités de `JpaRepository` |
+| **Relations** | Gérées manuellement (clés étrangères) | `@OneToMany`, `@ManyToOne` |
+| **Cascade** | SQL manuel | `CascadeType.ALL` |
+| **Productivité** | Verbose | Rapide |
+
+### Limitations connues
+
+Le même problème que JDBC : le moteur de jeu ne permet pas de reconstruire un `Game` complet depuis la base. JPA stocke les métadonnées mais ne peut pas restaurer l'état des tokens après redémarrage.
+
+**Annotations JPA clés utilisées** :
+- `@Entity`, `@Table` : mapping classe ↔ table
+- `@Id`, `@GeneratedValue` : clé primaire
+- `@Column` : mapping attribut ↔ colonne
+- `@OneToMany`, `@ManyToOne` : relations entre entités
+- `@PrePersist`, `@PreUpdate` : callbacks cycle de vie
+- `CascadeType.ALL`, `orphanRemoval` : cascade opérations
 
 **Ressources** :
 - [Baeldung — Spring Data JPA](https://www.baeldung.com/the-persistence-layer-with-spring-and-jpa)
