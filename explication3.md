@@ -527,14 +527,81 @@ Le même problème que JDBC : le moteur de jeu ne permet pas de reconstruire un 
 
 ## 3.5 — Bonus : Profils Spring et sources de données multiples
 
-**Objectif** : basculer facilement entre H2 (tests) et une vraie base (production).
+**Objectif** : basculer facilement entre H2 (développement/tests) et une vraie base (production) via les profils Spring.
 
-**Étapes** :
-1. Créer `application-h2.properties` pour la config H2 en mémoire
-2. Créer `application-mysql.properties` (ou `application-postgres.properties`) pour la prod
-3. Activer un profil via `spring.profiles.active=h2` ou `--spring.profiles.active=mysql`
+### Étapes réalisées
 
-**Avantage** : exécuter les tests rapidement sur H2, déployer sur PostgreSQL.
+**1. Création du profil H2** (`application-h2.properties`) :
+```properties
+# Profil H2 : Base de données en mémoire (développement/tests)
+spring.datasource.url=jdbc:h2:mem:squaregames
+spring.datasource.driver-class-name=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+
+# JPA/Hibernate Configuration pour H2
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+
+# Console H2 activée
+spring.h2.console.enabled=true
+spring.h2.console.path=/h2-console
+```
+
+**2. Création du profil MySQL** (`application-mysql.properties`) :
+```properties
+# Profil MySQL : Base de données MySQL (production)
+spring.datasource.url=jdbc:mysql://localhost:3306/squaregames?useSSL=false&serverTimezone=UTC
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.datasource.username=squaregames_user
+spring.datasource.password=CHANGE_ME_IN_PRODUCTION
+
+# JPA/Hibernate Configuration pour MySQL
+spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
+spring.jpa.hibernate.ddl-auto=validate
+spring.jpa.show-sql=false
+
+# Désactiver la console H2 en production
+spring.h2.console.enabled=false
+
+# Connection Pool (HikariCP)
+spring.datasource.hikikari.maximum-pool-size=10
+spring.datasource.hikari.minimum-idle=5
+```
+
+**3. Activation du profil** (`application.properties`) :
+```properties
+# 🎯 Profil Spring actif (h2 ou mysql)
+spring.profiles.active=h2
+```
+
+### Utilisation des profils
+
+**Démarrer avec H2** (par défaut) :
+```bash
+./mvnw spring-boot:run
+# ou explicitement :
+./mvnw spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=h2"
+```
+
+**Démarrer avec MySQL** :
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=mysql"
+```
+
+### Avantages des profils Spring
+
+| Environnement | Profil | Base de données | Console H2 | DDL |
+|---------------|--------|-----------------|------------|-----|
+| Développement | `h2` | H2 en mémoire | Activée | `update` |
+| Production | `mysql` | MySQL/PgSQL | Désactivée | `validate` |
+| Tests | `h2` | H2 embarquée | Activée | `create-drop` |
+
+**Séparation des responsabilités** :
+- `application.properties` : configuration commune + profil actif
+- `application-{profil}.properties` : configuration spécifique au profil
+- Pas de modification du code source selon l'environnement
 
 ---
 
