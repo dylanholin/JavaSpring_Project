@@ -37,6 +37,14 @@ Dernière mise à jour : 22/05/2026
 
 ---
 
+## Tests — Golden Master (bonus)
+
+| Étape | Statut |
+|---|---|
+| Tests d'intégration API (GameController) | ✅ |
+| Tests catalogue (GameCatalogController) | ✅ |
+| Tests unitaires Service (GameServiceImpl) | ✅ |
+
 ## Itération 4 — Utilisateurs & Sécurité
 
 | Étape | Statut |

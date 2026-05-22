@@ -238,6 +238,41 @@ Les méthodes utilisent maintenant :
 
 ---
 
+## Tests — Golden Master (bonus)
+
+**Objectif** : créer une suite de tests qui servira de référence pour valider que les refactorings futurs (JDBC, JPA) ne cassent pas le comportement existant.
+
+### Types de tests créés
+
+**1. Tests d'intégration API** (`GameControllerIntegrationTest.java`) :
+- `@SpringBootTest` avec `TestRestTemplate` pour tester les endpoints réellement
+- Tests de création, récupération, liste, jeu de coups
+- Vérification des codes HTTP (200, 404, 400)
+
+**2. Tests catalogue** (`GameCatalogControllerTest.java`) :
+- Test du endpoint `/games/catalog`
+- Vérification du support i18n avec header `Accept-Language`
+
+**3. Tests unitaires Service** (`GameServiceImplTest.java`) :
+- `@ExtendWith(MockitoExtension.class)` pour isoler le service
+- Mock de `GameDao` et `GamePlugin` pour tester sans dépendances
+- Vérification des interactions avec les mocks
+
+### Pourquoi c'est utile
+
+- **Golden Master** : après le refactoring DAO, les tests doivent toujours passer
+- **Régression** : détecter immédiatement si une modification casse l'API
+- **Documentation** : les tests montrent comment l'API est censée fonctionner
+
+### Exécuter les tests
+
+```bash
+cd /home/user/Documents/JavaSpring_Project/api_java_3_5/api
+./mvnw test
+```
+
+---
+
 ## 3.3 — Implémentation du DAO avec JDBC
 
 **Objectif** : stocker les données dans une vraie base SQL via JDBC (SQL explicite).
