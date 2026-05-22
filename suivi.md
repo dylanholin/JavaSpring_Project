@@ -30,11 +30,7 @@ Dernière mise à jour : 22/05/2026
 
 | Étape | Statut |
 |---|---|
-| 3.1 — Ajouter dépendance Spring Data JPA + H2 | ❌ |
-| 3.2 — Créer entité Game avec annotations JPA | ❌ |
-| 3.3 — Créer repository GameRepository | ❌ |
-| 3.4 — Modifier GameService pour utiliser JPA | ❌ |
-| 3.5 — Tests de persistance | ❌ |
+| 3.x — ... | ❌ |
 
 ---
 
