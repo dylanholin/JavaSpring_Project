@@ -371,6 +371,19 @@ public class GameController {
 - Si vous exposez directement l'objet `Game` du moteur, vous couplez votre API à la librairie. Le jour où la librairie change, votre API casse.
 - Les DTO vous permettent de **choisir exactement ce que vous exposez** (masquer des champs internes, renommer des propriétés, ajouter des informations calculées).
 
+### DTO ≠ Entity
+
+Ne confonds pas **DTO** (Data Transfer Object) et **Entity** (entité JPA) :
+
+| | DTO | Entity |
+|---|---|---|
+| Rôle | Transporter des données (client ↔ serveur) | Représenter un objet métier persistant |
+| Annotation | Aucune (simple `record` Java) | `@Entity` (JPA) |
+| Lien base de données | Aucun | Mappé à une table SQL |
+| Présent en itération 2 | ✅ Oui | ❌ Non (arrive en itération 3) |
+
+> 📌 En itération 2, les données sont stockées en mémoire (`HashMap`). L'itération 3 introduira JPA, les `@Entity` et les `Repository` pour persister les données en base.
+
 ### Syntaxe avancée introduite dans GameServiceImpl
 
 **`Stream.concat(stream1, stream2)` — fusionner deux flux**

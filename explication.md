@@ -39,6 +39,7 @@ Pour mémoriser rapidement Spring Boot, il est utile de penser l'application ain
 - `Controller` : reçoit la requête HTTP.
 - `Service` : contient la logique métier.
 - `Repository` : dialogue avec la base de données.
+- `Entity` : objet métier persisté en base de données (mappé à une table SQL via `@Entity`).
 - `Bean` : objet géré par Spring dans le conteneur IoC.
 
 Exemple mental simple : un contrôleur `UserController` reçoit `GET /users`, appelle `UserService`, qui lui-même peut appeler `UserRepository`, puis Spring renvoie la réponse au format JSON.
