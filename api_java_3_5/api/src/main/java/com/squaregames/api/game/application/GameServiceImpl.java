@@ -15,10 +15,11 @@ import java.util.stream.Stream;
 @Service
 public class GameServiceImpl implements GameService {
 
-    private final Map<UUID, Game> games = new HashMap<>();
+    private final GameDao gameDao;
     private final List<GamePlugin> plugins;
 
-    public GameServiceImpl(List<GamePlugin> plugins) {
+    public GameServiceImpl(GameDao gameDao, List<GamePlugin> plugins) {
+        this.gameDao = gameDao;
         this.plugins = plugins;
     }
 
@@ -30,23 +31,21 @@ public class GameServiceImpl implements GameService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Type de jeu inconnu : " + params.gameType()));
 
         Game game = plugin.getFactory().createGame(params.playerCount(), params.boardSize());
-        games.put(game.getId(), game);
+        gameDao.upsert(game);
         return toDto(game);
     }
 
     @Override
     public Collection<GameDto> listGames() {
-        return games.values().stream()
+        return gameDao.findAll().stream()
                 .map(this::toDto)
                 .toList();
     }
 
     @Override
     public GameDto getGame(UUID gameId) {
-        Game game = games.get(gameId);
-        if (game == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Partie introuvable : " + gameId);
-        }
+        Game game = gameDao.findById(gameId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Partie introuvable : " + gameId));
         return toDto(game);
     }
 
@@ -90,11 +89,8 @@ public class GameServiceImpl implements GameService {
     }
 
     private Game findGame(UUID gameId) {
-        Game game = games.get(gameId);
-        if (game == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Partie introuvable : " + gameId);
-        }
-        return game;
+        return gameDao.findById(gameId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Partie introuvable : " + gameId));
     }
 
     private GameDto toDto(Game game) {

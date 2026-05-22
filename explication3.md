@@ -180,6 +180,62 @@ public interface GameDao {
 
 > ⚠️ Cette implémentation se réinitialise à chaque démarrage — c'est normal à ce stade.
 
+### Implémentation réalisée
+
+**Interface `GameDao`** (`game/application/GameDao.java`) :
+```java
+public interface GameDao {
+    Collection<Game> findAll();
+    Optional<Game> findById(UUID gameId);
+    Game upsert(Game game);  // sauvegarde ou met à jour
+    void delete(UUID gameId);
+}
+```
+
+**Implémentation `InMemoryGameDao`** (`game/infrastructure/InMemoryGameDao.java`) :
+```java
+@Repository
+public class InMemoryGameDao implements GameDao {
+    private final Map<UUID, Game> games = new HashMap<>();
+
+    @Override
+    public Collection<Game> findAll() {
+        return games.values();
+    }
+
+    @Override
+    public Optional<Game> findById(UUID gameId) {
+        return Optional.ofNullable(games.get(gameId));
+    }
+
+    @Override
+    public Game upsert(Game game) {
+        games.put(game.getId(), game);
+        return game;
+    }
+
+    @Override
+    public void delete(UUID gameId) {
+        games.remove(gameId);
+    }
+}
+```
+
+**Refactoring de `GameServiceImpl`** :
+- Avant : `private final Map<UUID, Game> games = new HashMap<>();`
+- Après : `private final GameDao gameDao;` (injection par constructeur)
+
+Les méthodes utilisent maintenant :
+- `gameDao.upsert(game)` au lieu de `games.put(...)`
+- `gameDao.findAll()` au lieu de `games.values()`
+- `gameDao.findById(id).orElseThrow(...)` au lieu de `games.get(id)` avec null-check
+
+### Avantages du pattern DAO
+
+1. **Séparation des responsabilités** : la couche service ne sait pas comment les données sont stockées
+2. **Testabilité** : on peut mock `GameDao` dans les tests unitaires
+3. **Évolutivité** : passer de `InMemoryGameDao` à `JdbcGameDao` ou `JpaGameDao` sans toucher au service
+
 ---
 
 ## 3.3 — Implémentation du DAO avec JDBC
