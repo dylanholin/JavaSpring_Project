@@ -6,6 +6,27 @@ Guide pas-à-pas basé sur l'API existante (itération 2).
 
 ---
 
+## 0. Démarrer l'application
+
+Avant de tester les endpoints, il faut lancer le serveur Spring Boot.
+
+```bash
+cd /home/user/Documents/JavaSpring_Project/api_java_3_5/api
+./mvnw spring-boot:run
+```
+
+Ou depuis ton IDE : clique droit sur `ApiApplication.java` → Run.
+
+Le serveur démarre sur `http://localhost:8080` par défaut. Tu verras un log comme :
+
+```
+Started ApiApplication in X.xxx seconds
+```
+
+Une fois démarré, laisse le terminal ouvert — le serveur tourne en arrière-plan.
+
+---
+
 ## 1. Créer une partie
 
 ```http
@@ -38,6 +59,11 @@ Content-Type: application/json
 GET http://localhost:8080/games/{id}/moves
 ```
 
+> ⚠️ **Important** : remplace `{id}` par l'UUID réel retourné par l'étape 1.
+>
+> Exemple : si l'UUID est `a2ac5ed2-7761-41d2-a794-eb8e3b919252`, l'URL devient :
+> `http://localhost:8080/games/a2ac5ed2-7761-41d2-a794-eb8e3b919252/moves`
+
 ## 3. Jouer un coup
 
 ```http
@@ -51,11 +77,15 @@ Content-Type: application/json
 }
 ```
 
+> ⚠️ Remplace `{id}` par l'UUID réel de ta partie.
+
 ## 4. Voir l'état de la partie
 
 ```http
 GET http://localhost:8080/games/{id}
 ```
+
+> ⚠️ Remplace `{id}` par l'UUID réel de ta partie.
 
 ## 5. Lister toutes les parties
 
@@ -68,6 +98,34 @@ GET http://localhost:8080/games
 ```http
 GET http://localhost:8080/games/catalog
 Accept-Language: fr
+```
+
+---
+
+## Exemple complet avec curl
+
+Voici une séquence complète de test avec `curl` :
+
+```bash
+# 1. Créer une partie
+curl -X POST http://localhost:8080/games \
+  -H "Content-Type: application/json" \
+  -d '{"gameType":"tictactoe","playerCount":2,"boardSize":3}'
+
+# Réponse : {"id":"a2ac5ed2-7761-41d2-a794-eb8e3b919252",...}
+
+# 2. Voir les coups possibles (remplace l'UUID par celui reçu)
+curl http://localhost:8080/games/a2ac5ed2-7761-41d2-a794-eb8e3b919252/moves
+
+# 3. Jouer un coup X en (0,0)
+curl -X POST http://localhost:8080/games/a2ac5ed2-7761-41d2-a794-eb8e3b919252/moves \
+  -H "Content-Type: application/json" \
+  -d '{"tokenName":"X","row":0,"col":0}'
+
+# 4. Jouer un coup 0 en (1,1)
+curl -X POST http://localhost:8080/games/a2ac5ed2-7761-41d2-a794-eb8e3b919252/moves \
+  -H "Content-Type: application/json" \
+  -d '{"tokenName":"0","row":1,"col":1}'
 ```
 
 ---
