@@ -277,13 +277,90 @@ cd /home/user/Documents/JavaSpring_Project/api_java_3_5/api
 
 **Objectif** : stocker les données dans une vraie base SQL via JDBC (SQL explicite).
 
-**Étapes** :
-1. Lancer une base PostgreSQL ou MySQL via Docker
-2. Ajouter la dépendance `spring-boot-starter-jdbc`
-3. Configurer `application.properties` avec les propriétés de connexion
-4. Ajouter le driver JDBC (`postgresql` ou `mysql-connector-java`)
-5. Créer `JdbcGameDao` dans `game/infrastructure`
-6. Injecter `NamedParameterJdbcTemplate` et exécuter des requêtes SQL
+### Étapes réalisées
+
+**1. Ajout des dépendances Maven** (`pom.xml`) :
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-jdbc</artifactId>
+</dependency>
+
+<dependency>
+    <groupId>com.h2database</groupId>
+    <artifactId>h2</artifactId>
+    <scope>runtime</scope>
+</dependency>
+```
+
+**2. Configuration de la base H2** (`application.properties`) :
+```properties
+spring.datasource.url=jdbc:h2:mem:squaregames
+spring.datasource.driver-class-name=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+
+spring.h2.console.enabled=true
+spring.h2.console.path=/h2-console
+
+spring.sql.init.mode=always
+spring.sql.init.schema-locations=classpath:schema.sql
+```
+
+**3. Création du schéma SQL** (`schema.sql`) :
+```sql
+CREATE TABLE IF NOT EXISTS games (
+    id VARCHAR(36) PRIMARY KEY,
+    factory_id VARCHAR(50) NOT NULL,
+    board_size INT NOT NULL,
+    player_count INT NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS game_tokens (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    game_id VARCHAR(36) NOT NULL,
+    token_name VARCHAR(10) NOT NULL,
+    x_position INT,
+    y_position INT,
+    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+);
+```
+
+**4. Implémentation `JdbcGameDao`** (`game/infrastructure/JdbcGameDao.java`) :
+- Injection de `NamedParameterJdbcTemplate`
+- Méthodes avec SQL explicite (`INSERT`, `UPDATE`, `DELETE`, `SELECT`)
+- Utilisation de `MapSqlParameterSource` pour les paramètres nommés
+- Gestion du `upsert` (insert ou update selon l'existence)
+
+Exemple de requête avec paramètres nommés :
+```java
+String sql = "SELECT id, factory_id, board_size, player_count, status FROM games WHERE id = :id";
+SqlParameterSource params = new MapSqlParameterSource("id", gameId.toString());
+Game game = jdbcTemplate.queryForObject(sql, params, (rs, rowNum) -> mapRowToGame(rs));
+```
+
+### ⚠️ Limitation importante
+
+Le moteur de jeu (`square-games-engine`) ne permet pas de reconstruire un `Game` depuis une base de données relationnelle. Les jeux sont des objets complexes avec un état interne (tokens, positions) qui ne peut pas être facilement sérialisé/désérialisé en SQL.
+
+**Conséquence** : `JdbcGameDao` stocke les métadonnées (id, factory_id, board_size, status) mais ne peut pas restaurer l'état complet d'une partie. Pour une vraie persistance avec ce moteur, il faudrait :
+- Sérialisation JSON du Game complet
+- Ou modifier le moteur pour exposer plus d'informations
+- Ou utiliser JPA avec des entités complètes
+
+### Accès à la console H2
+
+L'application démarrée, la console H2 est accessible à :
+```
+http://localhost:8080/h2-console
+```
+
+JDBC URL : `jdbc:h2:mem:squaregames`
+User : `sa`
+Password : (vide)
 
 **Ressources** :
 - [Baeldung — Spring JDBC](https://www.baeldung.com/spring-jdbc-jdbctemplate)
