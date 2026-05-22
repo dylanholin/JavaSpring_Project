@@ -58,6 +58,13 @@ Jusqu'ici, toutes vos dépendances venaient de Maven Central (public). Le moteur
 
 > ⚠️ **Sécurité** : ne codez jamais votre token GitHub en dur dans `settings.xml`. Utilisez des variables d'environnement (`GITHUB_USERNAME`, `GITHUB_TOKEN`) ou à défaut, assurez-vous que le fichier `~/.m2/settings.xml` n'est jamais commité.
 
+> 💡 **Alternative locale** : si vous avez le code source du moteur dans votre workspace (`cda-java-spring-game-engine-main`), vous pouvez l'installer localement et éviter GitHub Packages :
+> ```bash
+> cd /home/user/Documents/JavaSpring_Project/cda-java-spring-game-engine-main
+> /home/user/Documents/JavaSpring_Project/api_java_3_5/api/mvnw install -DskipTests
+> ```
+> Cela installe le JAR dans votre cache Maven local (`~/.m2/repository`), où votre projet API le trouvera automatiquement.
+
 ### La logique derrière
 
 - L'`<id>github</id>` dans `pom.xml` (repository) doit correspondre à l'`<id>github</id>` dans `settings.xml` (server). C'est ce qui fait le lien entre « où trouver le paquet » et « comment s'authentifier ».
