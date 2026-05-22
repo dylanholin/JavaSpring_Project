@@ -29,12 +29,7 @@ Dernière mise à jour : 22/05/2026
 
 | Étape | Statut |
 |---|---|
-| 3.1 — Dépendance JPA + H2 dans pom.xml | ❌ |
-| 3.2 — Création de l'entité GameEntity | ❌ |
-| 3.3 — Création du repository GameRepository | ❌ |
-| 3.4 — Modification de GameServiceImpl (HashMap → JPA) | ❌ |
-| 3.5 — Configuration base de données (application.properties) | ❌ |
-| 3.6 — Tests de persistance | ❌ |
+| 3.x — ... | ❌ |
 
 ---
 
