@@ -138,6 +138,22 @@ Règles concernant Git dans ce projet :
 
     L'IA peut proposer un git push en fin de réponse, marqué comme à exécuter par l'utilisateur.
 
+Processus de vérification avant changement (Golden Master)
+
+Avant chaque modification de code significative, l'IA doit :
+
+    Lancer les tests pour établir l'état de référence (baseline) :
+        ./mvnw test -q
+    Vérifier que tous les tests passent avant modification
+
+    Après modification, relancer les tests :
+        ./mvnw test -q
+    Si les tests échouent, corriger avant de committer
+
+    Ne jamais committer si les tests ne passent pas
+
+Cette règle garantit que le "golden master" des tests est respecté et que les refactorings (DAO, JDBC, JPA) ne cassent pas le comportement existant.
+
 Format attendu après un changement
 
 Après chaque aide concrète sur le code, l'IA doit idéalement fournir :
