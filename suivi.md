@@ -18,11 +18,10 @@ Dernière mise à jour : 22/05/2026
 
 | Étape | Statut |
 |---|---|
-| 2.1 — Dépendance Maven + GameCatalog | ✅ |
+| 2.1 — Mise en place du projet Maven + GameCatalog | ✅ |
 | 2.2 — Conception de l'API REST | ✅ |
-| 2.3 — Implémentation Controller/Service/DTO | ✅ |
-| 2.4 — Plugins, @Value, i18n | ✅ |
-| 2.5 — Configuration Maven locale | ✅ |
+| 2.3 — Implémentation de l'API (Controller/Service/DTO) | ✅ |
+| 2.4 — Injection de valeurs et internationalisation (Plugins, @Value, i18n) | ✅ |
 
 ---
 
