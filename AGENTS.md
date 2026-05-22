@@ -190,6 +190,8 @@ Comportements à éviter
 
     Modifier le projet au-delà du besoin initial.
 
+    Prédire ou anticiper les futurs exercices des itérations suivantes. Seul l'utilisateur peut décider quand passer à l'itération suivante et quels exercices inclure.
+
 Structure du projet Spring Boot
 
 Ce projet Spring Boot est organisé par feature (fonctionnalité métier), avec une séparation en couches

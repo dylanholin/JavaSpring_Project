@@ -140,3 +140,107 @@ GET    /games/{id}         → état de la partie
 GET    /games              → toutes les parties
 GET    /games/catalog      → jeux disponibles
 ```
+
+---
+
+# Itération 3 — Persistance des données
+
+## 🎯 Objectif
+
+L'application actuelle stocke les parties en mémoire (`Map<UUID, Game>`). Toutes les données sont perdues à chaque redémarrage. Cette itération introduit la persistance via une base de données relationnelle, en progressant graduellement : DAO en mémoire → JDBC → JPA.
+
+---
+
+## 3.1 — Le pattern DAO
+
+**Concept** : Le DAO (Data Access Object) sépare la logique métier de la logique d'accès aux données. Le DAO expose des opérations de base (CRUD) et cache les détails de la technologie de persistance.
+
+**Avantage clé** : changer de technologie (mémoire → JDBC → JPA) n'impacte pas la couche service.
+
+```java
+public interface GameDao {
+    Stream<Game> findAll();
+    Optional<Game> findById(String gameId);
+    Game upsert(Game game);  // insert ou update
+    void delete(String gameId);
+}
+```
+
+---
+
+## 3.2 — Mise en place du DAO en mémoire
+
+**Objectif** : refactoriser l'existant pour isoler la persistance avant d'ajouter une vraie base de données.
+
+**Étapes** :
+1. Créer l'interface `GameDao` dans `game/application`
+2. Modifier `GameServiceImpl` pour injecter `GameDao` au lieu d'utiliser directement une `Map`
+3. Créer `InMemoryGameDao` dans `game/infrastructure` qui utilise `Map<String, Game>`
+4. Faire passer toutes les opérations de persistance par `GameDao`
+
+> ⚠️ Cette implémentation se réinitialise à chaque démarrage — c'est normal à ce stade.
+
+---
+
+## 3.3 — Implémentation du DAO avec JDBC
+
+**Objectif** : stocker les données dans une vraie base SQL via JDBC (SQL explicite).
+
+**Étapes** :
+1. Lancer une base PostgreSQL ou MySQL via Docker
+2. Ajouter la dépendance `spring-boot-starter-jdbc`
+3. Configurer `application.properties` avec les propriétés de connexion
+4. Ajouter le driver JDBC (`postgresql` ou `mysql-connector-java`)
+5. Créer `JdbcGameDao` dans `game/infrastructure`
+6. Injecter `NamedParameterJdbcTemplate` et exécuter des requêtes SQL
+
+**Ressources** :
+- [Baeldung — Spring JDBC](https://www.baeldung.com/spring-jdbc-jdbctemplate)
+- [DZone — NamedParameterJdbcTemplate](https://dzone.com/articles/spring-namedparameterjdbctemplate)
+
+---
+
+## 3.4 — Implémentation du DAO avec JPA
+
+**Objectif** : utiliser Spring Data JPA pour ne plus écrire de SQL manuellement.
+
+**Étapes** :
+1. Ajouter la dépendance `spring-boot-starter-data-jpa`
+2. Créer les entités JPA dans `game/domain` :
+   - `GameEntity` avec `@Id`, `@Entity`
+   - `GameTokenEntity` pour les tokens avec `@OneToMany`
+3. Créer `GameEntityRepository` qui étend `JpaRepository<GameEntity, String>`
+4. Créer `JpaGameDao` qui implémente `GameDao` en utilisant le repository
+5. Implémenter les conversions `Game ↔ GameEntity`
+
+**Annotations JPA clés** :
+- `@Entity` : marque une classe comme entité persistante
+- `@Id` : identifiant primaire
+- `@OneToMany(cascade = CascadeType.ALL)` : relation avec suppression en cascade
+
+**Ressources** :
+- [Baeldung — Spring Data JPA](https://www.baeldung.com/the-persistence-layer-with-spring-and-jpa)
+- [Spring — Accessing Data](https://spring.io/guides/gs/accessing-data-mysql/)
+
+---
+
+## 3.5 — Bonus : Profils Spring et sources de données multiples
+
+**Objectif** : basculer facilement entre H2 (tests) et une vraie base (production).
+
+**Étapes** :
+1. Créer `application-h2.properties` pour la config H2 en mémoire
+2. Créer `application-mysql.properties` (ou `application-postgres.properties`) pour la prod
+3. Activer un profil via `spring.profiles.active=h2` ou `--spring.profiles.active=mysql`
+
+**Avantage** : exécuter les tests rapidement sur H2, déployer sur PostgreSQL.
+
+---
+
+## Livrables attendus
+
+- Interface `GameDao` et implémentation `InMemoryGameDao`
+- Implémentation `JdbcGameDao` avec SQL explicite
+- Implémentation `JpaGameDao` avec Spring Data JPA
+- Entités JPA `GameEntity` et `GameTokenEntity`
+- Les parties survivent au redémarrage de l'application
