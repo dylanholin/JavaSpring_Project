@@ -60,6 +60,14 @@
 			<scope>test</scope>
 		</dependency>
 
+		<!-- WireMock — simulation HTTP pour tests de contrat -->
+		<dependency>
+			<groupId>org.wiremock.integrations</groupId>
+			<artifactId>wiremock-spring-boot</artifactId>
+			<version>3.9.0</version>
+			<scope>test</scope>
+		</dependency>
+
 		<!-- JDBC et Base de données H2 -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
