@@ -42,6 +42,11 @@ cd api_java_3_5/api
 
 ## Jouer une partie — Guide complet
 
+> ⚠️ **Les deux applications doivent être démarrées** avant de commencer (voir section Démarrage).
+> ⚠️ **La base de données est en mémoire** : toutes les données sont perdues à chaque redémarrage. Il faut recréer les utilisateurs à chaque fois.
+
+---
+
 ### Étape 1 — Créer un utilisateur
 
 ```bash
@@ -50,17 +55,17 @@ curl -X POST http://localhost:8081/users \
   -d '{"name":"Alice","email":"alice@example.com"}'
 ```
 
-Réponse :
+Exemple de réponse :
 ```json
 {
-  "id": "a1b2c3d4-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "id": "3c9eabbf-2bba-4c86-a453-98ee8cc101c4",
   "name": "Alice",
   "email": "alice@example.com",
   "createdAt": "2026-05-26T10:00:00Z"
 }
 ```
 
-> 📌 Note l'`id` — il sera utilisé comme `X-UserId` pour créer une partie.
+> 📌 **Copie le champ `id`** de cette réponse — c'est l'identifiant utilisateur. Tu en auras besoin à l'étape 3.
 
 ---
 
@@ -70,60 +75,67 @@ Réponse :
 curl http://localhost:8080/games/catalog
 ```
 
-Jeux disponibles : `tictactoe`, `connect4`, `taquin`
+Jeux disponibles : `tictactoe`, `connect4`, `15 puzzle`
 
 ---
 
 ### Étape 3 — Créer une partie
 
+Remplace `{USER_ID}` par le champ `id` copié à l'étape 1 :
+
 ```bash
 curl -X POST http://localhost:8080/games \
   -H "Content-Type: application/json" \
-  -H "X-UserId: a1b2c3d4-xxxx-xxxx-xxxx-xxxxxxxxxxxx" \
+  -H "X-UserId: {USER_ID}" \
   -d '{"gameType":"tictactoe","playerCount":2,"boardSize":3}'
 ```
 
-Réponse :
+Exemple de réponse :
 ```json
 {
-  "id": "b2c3d4e5-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "id": "24f70b09-6104-4baa-97bf-1393959513fa",
   "gameType": "tictactoe",
   "playerCount": 2,
   "boardSize": 3,
   "status": "ONGOING",
-  "currentPlayerId": "c3d4e5f6-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  "currentPlayerId": "3c9eabbf-2bba-4c86-a453-98ee8cc101c4"
 }
 ```
 
-> 📌 Note le `currentPlayerId` — c'est l'UUID du joueur dont c'est le tour. Depuis l'itération 4.2, cet UUID correspond à l'`id` de l'utilisateur qui a créé la partie (passé dans `X-UserId` à l'étape 3). Utilise-le comme `X-UserId` pour jouer un coup.
+> 📌 **Copie le champ `id`** → c'est le `GAME_ID`, tu en auras besoin pour les coups.
+> 📌 **Copie le champ `currentPlayerId`** → c'est l'UUID du joueur dont c'est le tour. Il doit correspondre à ton `USER_ID` pour que tu puisses jouer.
 
 ---
 
 ### Étape 4 — Voir les coups possibles
 
+Remplace `{GAME_ID}` par le champ `id` copié à l'étape 3 :
+
 ```bash
-curl http://localhost:8080/games/b2c3d4e5-xxxx/moves
+curl http://localhost:8080/games/{GAME_ID}/moves
 ```
 
 ---
 
 ### Étape 5 — Jouer un coup
 
-> ⚠️ Le `X-UserId` doit être le `currentPlayerId` retourné à l'étape 3.
+Remplace `{GAME_ID}` par le champ `id` et `{CURRENT_PLAYER_ID}` par le champ `currentPlayerId` copiés à l'étape 3 :
 
 ```bash
-curl -X POST http://localhost:8080/games/b2c3d4e5-xxxx/moves \
+curl -X POST http://localhost:8080/games/{GAME_ID}/moves \
   -H "Content-Type: application/json" \
-  -H "X-UserId: c3d4e5f6-xxxx-xxxx-xxxx-xxxxxxxxxxxx" \
+  -H "X-UserId: {CURRENT_PLAYER_ID}" \
   -d '{"tokenName":"X","row":0,"col":0}'
 ```
+
+> ⚠️ Si `X-UserId` ne correspond pas au `currentPlayerId` → `403 Forbidden`
 
 ---
 
 ### Étape 6 — Voir l'état de la partie
 
 ```bash
-curl http://localhost:8080/games/b2c3d4e5-xxxx
+curl http://localhost:8080/games/{GAME_ID}
 ```
 
 ---
@@ -132,7 +144,7 @@ curl http://localhost:8080/games/b2c3d4e5-xxxx
 
 ```bash
 curl http://localhost:8080/games \
-  -H "X-UserId: a1b2c3d4-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  -H "X-UserId: {USER_ID}"
 ```
 
 ---
