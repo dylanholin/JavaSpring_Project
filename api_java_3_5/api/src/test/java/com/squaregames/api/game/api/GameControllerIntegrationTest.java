@@ -69,13 +69,18 @@ class GameControllerIntegrationTest {
                 "/games", HttpMethod.POST, entity, GameDto.class);
 
         // Then
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getStatusCode())
+                .as("La création de partie doit retourner 200")
+                .isEqualTo(HttpStatus.OK);
         GameDto body = java.util.Objects.requireNonNull(response.getBody());
-        assertThat(body.id()).isNotNull();
-        assertThat(body.gameType()).isEqualTo("tictactoe");
-        assertThat(body.playerCount()).isEqualTo(2);
-        assertThat(body.boardSize()).isEqualTo(3);
-        assertThat(body.status()).isEqualTo("ONGOING");
+        assertThat(body.id()).as("L'id de la partie doit être un UUID non null").isNotNull();
+        assertThat(body.gameType()).as("Le type de jeu doit être tictactoe").isEqualTo("tictactoe");
+        assertThat(body.playerCount()).as("Le nombre de joueurs doit être 2").isEqualTo(2);
+        assertThat(body.boardSize()).as("La taille du plateau doit être 3").isEqualTo(3);
+        assertThat(body.status()).as("Le statut initial doit être ONGOING").isEqualTo("ONGOING");
+        assertThat(body.currentPlayerId())
+                .as("Le premier joueur (currentPlayerId) doit être l'utilisateur qui a créé la partie (X-UserId)")
+                .isEqualTo(UUID.fromString(TEST_USER_ID));
     }
 
     @Test
@@ -90,8 +95,16 @@ class GameControllerIntegrationTest {
                 new ParameterizedTypeReference<>() {});
 
         // Then
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getStatusCode())
+                .as("La liste des parties doit retourner 200")
+                .isEqualTo(HttpStatus.OK);
+        Collection<GameDto> games = java.util.Objects.requireNonNull(response.getBody());
+        assertThat(games)
+                .as("La liste doit contenir au moins la partie créée dans setUp")
+                .isNotEmpty();
+        assertThat(games.stream().map(GameDto::id).toList())
+                .as("La partie créée dans setUp doit être présente dans la liste")
+                .contains(createdGameId);
     }
 
     @Test
@@ -140,10 +153,13 @@ class GameControllerIntegrationTest {
 
     @Test
     void shouldPlayMove() {
-        // Récupère le currentPlayerId depuis l'état du jeu
-        ResponseEntity<GameDto> gameState = restTemplate.getForEntity(
-                "/games/" + createdGameId, GameDto.class);
-        String currentPlayerId = java.util.Objects.requireNonNull(gameState.getBody()).currentPlayerId().toString();
+        // Le currentPlayerId doit être TEST_USER_ID (créateur de la partie)
+        GameDto gameState = java.util.Objects.requireNonNull(
+                restTemplate.getForEntity("/games/" + createdGameId, GameDto.class).getBody());
+        assertThat(gameState.currentPlayerId())
+                .as("Le premier joueur doit être l'utilisateur qui a créé la partie")
+                .isEqualTo(UUID.fromString(TEST_USER_ID));
+        String currentPlayerId = gameState.currentPlayerId().toString();
 
         // Given
         MoveRequest move = new MoveRequest("X", 0, 0);
@@ -160,9 +176,15 @@ class GameControllerIntegrationTest {
                 GameDto.class);
 
         // Then
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getStatusCode())
+                .as("Jouer un coup valide doit retourner 200")
+                .isEqualTo(HttpStatus.OK);
         GameDto moveBody = java.util.Objects.requireNonNull(response.getBody());
-        assertThat(moveBody.id()).isEqualTo(createdGameId);
+        assertThat(moveBody.id()).as("L'id de la partie ne doit pas changer").isEqualTo(createdGameId);
+        assertThat(moveBody.status()).as("La partie doit rester ONGOING ou passer à FINISHED").isIn("ONGOING", "FINISHED");
+        assertThat(moveBody.currentPlayerId())
+                .as("Après un coup, c'est au tour de l'autre joueur")
+                .isNotEqualTo(UUID.fromString(TEST_USER_ID));
     }
 
     @Test
@@ -206,7 +228,12 @@ class GameControllerIntegrationTest {
                 request,
                 String.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getStatusCode())
+                .as("Un joueur qui n'est pas currentPlayerId doit recevoir 403")
+                .isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getBody())
+                .as("Le message d'erreur doit indiquer la cause")
+                .contains("403");
     }
 
     @Test

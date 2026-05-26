@@ -74,11 +74,13 @@ class GameServiceImplTest {
         GameDto result = gameService.createGame(params, USER_ID);
 
         // Then
-        assertThat(result).isNotNull();
-        assertThat(result.id()).isEqualTo(gameId);
-        assertThat(result.gameType()).isEqualTo("tictactoe");
-        // Vérifie que l'userId est bien dans les playerIds passés au moteur (LinkedHashSet = ordre garanti)
-        verify(gameFactory).createGame(eq(3), argThat((Set<UUID> ids) -> ids.iterator().next().equals(userUuid)));
+        assertThat(result).as("Le DTO ne doit pas être null").isNotNull();
+        assertThat(result.id()).as("L'id doit correspondre au jeu créé").isEqualTo(gameId);
+        assertThat(result.gameType()).as("Le type de jeu doit être tictactoe").isEqualTo("tictactoe");
+        assertThat(result.status()).as("Le statut initial doit être ONGOING").isEqualTo("ONGOING");
+        // Vérifie que l'userId est le PREMIER joueur passé au moteur (LinkedHashSet garantit l'ordre)
+        verify(gameFactory).createGame(eq(3), argThat((Set<UUID> ids) ->
+                ids.iterator().next().equals(userUuid)));
         verify(gameDao).upsert(game);
     }
 
@@ -88,7 +90,10 @@ class GameServiceImplTest {
         GameCreationParams params = new GameCreationParams("tictactoe", 2, 3);
 
         assertThatThrownBy(() -> gameService.createGame(params, "not-a-uuid"))
+                .as("Un userId non-UUID doit lever IllegalArgumentException")
                 .isInstanceOf(IllegalArgumentException.class);
+        // Vérifie que le moteur n'a JAMAIS été appelé
+        verifyNoInteractions(gameFactory);
     }
 
     @Test
@@ -125,11 +130,19 @@ class GameServiceImplTest {
 
         // Then
         assertThatThrownBy(() -> gameService.createGame(params, USER_ID))
+                .as("Un type de jeu inconnu doit lever une ResponseStatusException 400")
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> {
                     ResponseStatusException rex = (ResponseStatusException) ex;
-                    assertThat(rex.getStatusCode().value()).isEqualTo(400);
+                    assertThat(rex.getStatusCode().value())
+                            .as("Le code HTTP doit être 400 BAD_REQUEST")
+                            .isEqualTo(400);
+                    assertThat(rex.getReason())
+                            .as("Le message doit mentionner le type de jeu inconnu")
+                            .contains("unknown");
                 });
+        // Vérifie que le moteur n'a pas été appelé
+        verifyNoInteractions(gameFactory);
     }
 
     @Test
@@ -177,10 +190,13 @@ class GameServiceImplTest {
 
         // Then
         assertThatThrownBy(() -> gameService.getGame(unknownId))
+                .as("Un gameId inconnu doit lever une ResponseStatusException 404")
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> {
                     ResponseStatusException rex = (ResponseStatusException) ex;
-                    assertThat(rex.getStatusCode().value()).isEqualTo(404);
+                    assertThat(rex.getStatusCode().value())
+                            .as("Le code HTTP doit être 404 NOT_FOUND")
+                            .isEqualTo(404);
                 });
     }
 }
