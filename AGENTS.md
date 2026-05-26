@@ -322,6 +322,38 @@ Règles de génération pour les nouvelles features :
 
     Si plusieurs structures sont possibles, choisir la plus simple compatible avec la maintenabilité.
 
+Stratégie de tests du projet
+
+Le projet suit une architecture de tests à trois niveaux. L'IA doit connaître ces niveaux pour ne pas casser la cohérence.
+
+Niveau 1 — Tests d'intégration (golden master, sans mock sur la logique métier)
+- Fichiers : GameControllerIntegrationTest, UserControllerIntegrationTest
+- Démarrent une vraie application Spring Boot (WebEnvironment.RANDOM_PORT)
+- Seul UserValidator est mocké dans GameControllerIntegrationTest (pour isoler api de user-api)
+- Ces tests sont la référence : si un refactoring les casse, c'est un bug réel
+- Ils ont détecté un vrai bug (token cherché dans getBoard() au lieu de getRemainingTokens())
+
+Niveau 2 — Tests de contrat inter-services (WireMock)
+- Fichier : UserValidationContractTest
+- Utilise WireMock (org.wiremock.integrations:wiremock-spring-boot:3.9.0) pour simuler user-api
+- @EnableWireMock + @InjectWireMock + @DynamicPropertySource pour pointer user.service.url vers WireMock
+- Vérifie que api interprète correctement chaque réponse HTTP de user-api (true/false/503/404)
+- Ces tests prouvent que RestUserValidator fonctionne sans démarrer user-api réellement
+
+Niveau 3 — Tests unitaires (Mockito, isolation pure)
+- Fichier : GameServiceImplTest
+- Utilisent @ExtendWith(MockitoExtension.class), tous les collaborateurs sont mockés
+- Utiles pour vérifier la logique du service en isolation
+- Attention : l'auto-cohérence est possible (l'IA génère impl + test ensemble)
+  → Toujours compléter par un test d'intégration pour valider le comportement réel
+
+Règles pour les tests
+- Ne jamais supprimer ou affaiblir un test existant sans justification explicite
+- Lancer ./mvnw test avant et après chaque modification significative (golden master)
+- Les messages d'assertion (.as("...")) sont obligatoires pour faciliter le diagnostic
+- Utiliser verifyNoInteractions() pour prouver qu'un composant n'est pas appelé en cas d'erreur amont
+- Lire les tokens disponibles via /moves plutôt que coder en dur "X"/"0" (dépend de l'ordre interne du moteur)
+
 Règle finale
 
 Quand plusieurs solutions existent, l'IA doit choisir celle qui est la plus sûre, la plus simple à relire, la plus facile à tester et la moins intrusive pour le projet.

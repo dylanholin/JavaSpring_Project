@@ -179,14 +179,33 @@ Identifiants : user `sa`, password vide.
 ## Lancer les tests
 
 ```bash
-# Tests de l'app de jeux
+# Tests de l'app de jeux (27 tests)
 cd api_java_3_5/api
 ./mvnw test
 
-# Tests de user-api
+# Tests de user-api (10 tests)
 cd user-api
 ./mvnw test
 ```
+
+### Ce que couvrent les tests
+
+**`api_java_3_5/api` — 27 tests**
+
+| Fichier | Type | Ce qu'il teste |
+|---------|------|----------------|
+| `GameControllerIntegrationTest` | Intégration | CRUD parties, mouvements, 403/404/400, `currentPlayerId == X-UserId`, partie complète jusqu'à `TERMINATED` |
+| `UserValidationContractTest` | Contrat (WireMock) | Comportement de `api` selon les réponses de `user-api` (200 true/false, 503, 404) |
+| `GameServiceImplTest` | Unitaire (Mockito) | Logique du service isolée du DAO et des plugins |
+| `GameCatalogControllerTest` | Intégration | Catalogue de jeux disponibles |
+
+**`user-api` — 10 tests**
+
+| Fichier | Type | Ce qu'il teste |
+|---------|------|----------------|
+| `UserControllerIntegrationTest` | Intégration | CRUD utilisateurs, validation, 409 doublon email, 400 champs invalides |
+
+> 💡 Les tests d'intégration démarrent une vraie application Spring Boot sans mock sur la logique métier — ils détectent les bugs réels (ex : le bug de recherche de token dans `getBoard()` corrigé grâce au test de partie complète).
 
 ---
 
