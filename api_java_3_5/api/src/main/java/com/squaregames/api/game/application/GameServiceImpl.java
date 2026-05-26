@@ -92,10 +92,8 @@ public class GameServiceImpl implements GameService {
                     "Ce n'est pas votre tour. Joueur courant : " + currentPlayerId);
         }
 
-        Token token = Stream.concat(
-                game.getBoard().values().stream(),
-                game.getRemainingTokens().stream()
-        ).filter(t -> t.getName().equals(move.tokenName()))
+        Token token = game.getRemainingTokens().stream()
+                .filter(t -> t.getName().equals(move.tokenName()))
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Token introuvable : " + move.tokenName()));

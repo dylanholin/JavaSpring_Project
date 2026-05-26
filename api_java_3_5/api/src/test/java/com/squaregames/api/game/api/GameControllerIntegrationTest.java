@@ -263,6 +263,111 @@ class GameControllerIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
+    /**
+     * Joue une partie TicTacToe complète jusqu'à TERMINATED avec le vrai moteur.
+     * Aucun mock sur la logique du jeu — validation indépendante de l'implémentation.
+     *
+     * Séquence gagnante pour le joueur A (token "X") sur plateau 3x3 :
+     *   X:(0,0) → O:(0,1) → X:(1,0) → O:(1,1) → X:(2,0)
+     * → X aligne la ligne y=0 (cases (0,0),(1,0),(2,0)) et gagne.
+     * CellPosition(x,y) : x = colonne, y = ligne.
+     */
+    @Test
+    void shouldCompleteFullTicTacToeGame() {
+        // --- Création de la partie ---
+        GameCreationParams params = new GameCreationParams("tictactoe", 2, 3);
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-UserId", TEST_USER_ID);
+        GameDto game = java.util.Objects.requireNonNull(
+                restTemplate.exchange("/games", HttpMethod.POST,
+                        new HttpEntity<>(params, headers), GameDto.class).getBody());
+
+        UUID gameId = game.id();
+        assertThat(game.currentPlayerId())
+                .as("Le créateur (TEST_USER_ID) doit être le premier joueur")
+                .isEqualTo(UUID.fromString(TEST_USER_ID));
+        assertThat(game.status()).isEqualTo("ONGOING");
+
+        // On lit le nom du token disponible pour chaque joueur via /moves
+        // (évite de coder en dur "X"/"0" qui dépend de l'ordre interne du moteur)
+        String tokenA = getFirstAvailableToken(gameId);
+
+        // --- Coup 1 : joueur A joue son token en (0,0) ---
+        GameDto after1 = playMove(gameId, TEST_USER_ID, tokenA, 0, 0);
+        assertThat(after1.status()).as("Après le coup 1, la partie doit être ONGOING").isEqualTo("ONGOING");
+        String playerB = after1.currentPlayerId().toString();
+        assertThat(playerB)
+                .as("Après le coup du joueur A, c'est au joueur B")
+                .isNotEqualTo(TEST_USER_ID);
+
+        String tokenB = getFirstAvailableToken(gameId);
+
+        // --- Coup 2 : joueur B joue son token en (0,1) ---
+        GameDto after2 = playMove(gameId, playerB, tokenB, 0, 1);
+        assertThat(after2.status()).as("Après le coup 2, la partie doit être ONGOING").isEqualTo("ONGOING");
+        assertThat(after2.currentPlayerId().toString())
+                .as("Après le coup du joueur B, c'est au joueur A")
+                .isEqualTo(TEST_USER_ID);
+
+        // --- Coup 3 : joueur A joue son token en (1,0) ---
+        GameDto after3 = playMove(gameId, TEST_USER_ID, getFirstAvailableToken(gameId), 1, 0);
+        assertThat(after3.status()).as("Après le coup 3, la partie doit être ONGOING").isEqualTo("ONGOING");
+
+        // --- Coup 4 : joueur B joue son token en (1,1) ---
+        GameDto after4 = playMove(gameId, playerB, getFirstAvailableToken(gameId), 1, 1);
+        assertThat(after4.status()).as("Après le coup 4, la partie doit être ONGOING").isEqualTo("ONGOING");
+
+        // --- Coup 5 : joueur A joue son token en (2,0) → aligne ligne y=0 → victoire ---
+        GameDto after5 = playMove(gameId, TEST_USER_ID, getFirstAvailableToken(gameId), 2, 0);
+        assertThat(after5.status())
+                .as("Après le 5ème coup (alignement ligne y=0), la partie doit être TERMINATED")
+                .isEqualTo("TERMINATED");
+        assertThat(after5.currentPlayerId())
+                .as("Quand TERMINATED, currentPlayerId == ID du gagnant (joueur A = TEST_USER_ID)")
+                .isEqualTo(UUID.fromString(TEST_USER_ID));
+
+        // --- Vérification de l'état final via GET ---
+        GameDto finalState = java.util.Objects.requireNonNull(
+                restTemplate.getForEntity("/games/" + gameId, GameDto.class).getBody());
+        assertThat(finalState.status())
+                .as("L'état final en base doit être TERMINATED")
+                .isEqualTo("TERMINATED");
+        assertThat(finalState.currentPlayerId())
+                .as("L'état final en base doit indiquer TEST_USER_ID comme gagnant")
+                .isEqualTo(UUID.fromString(TEST_USER_ID));
+    }
+
+    /** Méthode utilitaire : retourne le nom du premier token ayant des coups disponibles. */
+    private String getFirstAvailableToken(UUID gameId) {
+        Collection<TokenMovesDto> moves = java.util.Objects.requireNonNull(
+                restTemplate.exchange(
+                        "/games/" + gameId + "/moves",
+                        HttpMethod.GET, null,
+                        new ParameterizedTypeReference<Collection<TokenMovesDto>>() {}).getBody());
+        return moves.stream()
+                .filter(t -> !t.allowedMoves().isEmpty())
+                .map(TokenMovesDto::tokenName)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Aucun token disponible pour la partie " + gameId));
+    }
+
+    /** Méthode utilitaire : joue un coup et retourne le GameDto résultant. */
+    private GameDto playMove(UUID gameId, String userId, String tokenName, int row, int col) {
+        MoveRequest move = new MoveRequest(tokenName, row, col);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("X-UserId", userId);
+        ResponseEntity<GameDto> response = restTemplate.exchange(
+                "/games/" + gameId + "/moves",
+                HttpMethod.POST,
+                new HttpEntity<>(move, headers),
+                GameDto.class);
+        assertThat(response.getStatusCode())
+                .as("Le coup (%s en %d,%d) par %s doit retourner 200".formatted(tokenName, row, col, userId))
+                .isEqualTo(HttpStatus.OK);
+        return java.util.Objects.requireNonNull(response.getBody());
+    }
+
     @Test
     void shouldCreateDifferentGameTypes() {
         HttpHeaders headers = new HttpHeaders();
