@@ -7,6 +7,7 @@ import fr.le_campus_numerique.square_games.engine.GameFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
@@ -61,7 +62,7 @@ class GameServiceImplTest {
         UUID gameId = UUID.randomUUID();
 
         UUID userUuid = UUID.fromString(USER_ID);
-        when(gameFactory.createGame(anyInt(), any(Set.class))).thenReturn(game);
+        when(gameFactory.createGame(anyInt(), ArgumentMatchers.<Set<UUID>>any())).thenReturn(game);
         when(game.getId()).thenReturn(gameId);
         when(game.getFactoryId()).thenReturn("tictactoe");
         when(game.getPlayerIds()).thenReturn(Set.of(userUuid, UUID.randomUUID()));
@@ -94,7 +95,7 @@ class GameServiceImplTest {
     void shouldValidateUserOnCreateGame() {
         GameCreationParams params = new GameCreationParams("tictactoe", 2, 3);
         UUID userUuid = UUID.fromString(USER_ID);
-        when(gameFactory.createGame(anyInt(), any(Set.class))).thenReturn(game);
+        when(gameFactory.createGame(anyInt(), ArgumentMatchers.<Set<UUID>>any())).thenReturn(game);
         when(game.getId()).thenReturn(UUID.randomUUID());
         when(game.getFactoryId()).thenReturn("tictactoe");
         when(game.getPlayerIds()).thenReturn(Set.of(userUuid));

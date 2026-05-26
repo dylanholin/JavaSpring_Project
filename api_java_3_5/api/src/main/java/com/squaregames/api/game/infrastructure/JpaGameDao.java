@@ -50,12 +50,14 @@ public class JpaGameDao implements GameDao {
     }
 
     @Override
+    @SuppressWarnings("null")
     public Optional<Game> findById(UUID gameId) {
         Optional<GameEntity> entity = repository.findById(gameId.toString());
-        return entity.map(this::convertToGame);
+        return entity.map(this::convertToGame).filter(Objects::nonNull);
     }
 
     @Override
+    @SuppressWarnings("null")
     public Game upsert(Game game) {
         GameEntity entity = convertToEntity(game);
         repository.save(entity);
@@ -63,6 +65,7 @@ public class JpaGameDao implements GameDao {
     }
 
     @Override
+    @SuppressWarnings("null")
     public void delete(UUID gameId) {
         repository.deleteById(gameId.toString());
     }

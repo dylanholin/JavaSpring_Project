@@ -22,11 +22,13 @@ public class JpaUserDao implements UserDao {
     }
 
     @Override
+    @SuppressWarnings("null")
     public User save(User user) {
         return repository.save(user);
     }
 
     @Override
+    @SuppressWarnings("null")
     public Optional<User> findById(String id) {
         return repository.findById(id);
     }
@@ -37,11 +39,13 @@ public class JpaUserDao implements UserDao {
     }
 
     @Override
+    @SuppressWarnings("null")
     public void deleteById(String id) {
         repository.deleteById(id);
     }
 
     @Override
+    @SuppressWarnings("null")
     public boolean existsById(String id) {
         return repository.existsById(id);
     }
