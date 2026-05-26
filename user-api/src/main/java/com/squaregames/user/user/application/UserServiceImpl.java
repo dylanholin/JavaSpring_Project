@@ -1,7 +1,9 @@
 package com.squaregames.user.user.application;
 
 import com.squaregames.user.user.domain.User;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,7 +23,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public User createUser(String name, String email) {
         if (userDao.existsByEmail(email)) {
-            throw new IllegalArgumentException("Email already exists: " + email);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists: " + email);
         }
         User user = new User(name, email);
         return userDao.save(user);
