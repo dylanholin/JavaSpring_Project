@@ -34,7 +34,14 @@ public class GameServiceImpl implements GameService {
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Type de jeu inconnu : " + params.gameType()));
 
-        Game game = plugin.getFactory().createGame(params.playerCount(), params.boardSize());
+        UUID userUuid = UUID.fromString(userId);
+        Set<UUID> playerIds = new HashSet<>();
+        playerIds.add(userUuid);
+        // Complète avec des UUID aléatoires pour les autres joueurs
+        for (int i = 1; i < params.playerCount(); i++) {
+            playerIds.add(UUID.randomUUID());
+        }
+        Game game = plugin.getFactory().createGame(params.boardSize(), playerIds);
         gameDao.upsert(game);
         return toDto(game);
     }

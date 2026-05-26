@@ -37,7 +37,7 @@ class GameControllerIntegrationTest {
     private UserValidator userValidator;
 
     private UUID createdGameId;
-    private static final String TEST_USER_ID = "test-user-001";
+    private static final String TEST_USER_ID = "00000000-0000-0000-0000-000000000001";
 
     @BeforeEach
     void setUp() {

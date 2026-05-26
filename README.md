@@ -95,7 +95,7 @@ Réponse :
 }
 ```
 
-> 📌 Note le `currentPlayerId` — c'est l'UUID du joueur dont c'est le tour. Il doit être utilisé comme `X-UserId` pour jouer un coup.
+> 📌 Note le `currentPlayerId` — c'est l'UUID du joueur dont c'est le tour. Depuis l'itération 4.2, cet UUID correspond à l'`id` de l'utilisateur qui a créé la partie (passé dans `X-UserId` à l'étape 3). Utilise-le comme `X-UserId` pour jouer un coup.
 
 ---
 

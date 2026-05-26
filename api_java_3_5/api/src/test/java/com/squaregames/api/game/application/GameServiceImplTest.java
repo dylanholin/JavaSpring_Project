@@ -43,7 +43,7 @@ class GameServiceImplTest {
 
     private GameServiceImpl gameService;
 
-    private static final String USER_ID = "user-123";
+    private static final String USER_ID = "00000000-0000-0000-0000-000000000001";
 
     @BeforeEach
     void setUp() {
@@ -60,7 +60,7 @@ class GameServiceImplTest {
         GameCreationParams params = new GameCreationParams("tictactoe", 2, 3);
         UUID gameId = UUID.randomUUID();
 
-        when(gameFactory.createGame(2, 3)).thenReturn(game);
+        when(gameFactory.createGame(anyInt(), any(Set.class))).thenReturn(game);
         when(game.getId()).thenReturn(gameId);
         when(game.getFactoryId()).thenReturn("tictactoe");
         when(game.getPlayerIds()).thenReturn(Set.of(UUID.randomUUID(), UUID.randomUUID()));
