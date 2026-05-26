@@ -1,6 +1,6 @@
 # Suivi du projet SquareGames
 
-Dernière mise à jour : 22/05/2026
+Dernière mise à jour : 26/05/2026
 
 ---
 

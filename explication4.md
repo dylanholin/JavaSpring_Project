@@ -330,6 +330,28 @@ class GameControllerIntegrationTest {
 
 ---
 
+## ⚠️ Attention — Les exemples curl de l'itération 3 sont obsolètes
+
+Depuis l'itération 4.2, le header `X-UserId` est **obligatoire** sur les endpoints `/games` (POST, GET) et `/games/{id}/moves` (POST). Les exemples curl de `explication3.md` ne l'incluent pas et retourneront désormais `400 Bad Request`.
+
+**Exemple mis à jour pour POST /games** :
+```bash
+# Avant (itération 3) — ne fonctionne plus
+curl -X POST http://localhost:8080/games \
+  -H "Content-Type: application/json" \
+  -d '{"gameType":"tictactoe","playerCount":2,"boardSize":3}'
+
+# Après (itération 4.2) — version correcte
+curl -X POST http://localhost:8080/games \
+  -H "Content-Type: application/json" \
+  -H "X-UserId: <uuid-joueur-valide>" \
+  -d '{"gameType":"tictactoe","playerCount":2,"boardSize":3}'
+```
+
+> 📌 `<uuid-joueur-valide>` doit être l'id d'un utilisateur existant dans user-api (créé via `POST /users`).
+
+---
+
 ## Notes d'implémentation
 
 **Ports distincts obligatoires** :
