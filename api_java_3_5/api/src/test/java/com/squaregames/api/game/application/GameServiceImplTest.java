@@ -76,8 +76,8 @@ class GameServiceImplTest {
         assertThat(result).isNotNull();
         assertThat(result.id()).isEqualTo(gameId);
         assertThat(result.gameType()).isEqualTo("tictactoe");
-        // Vérifie que l'userId est bien passé comme playerId au moteur
-        verify(gameFactory).createGame(eq(3), argThat((Set<UUID> ids) -> ids.contains(userUuid)));
+        // Vérifie que l'userId est bien dans les playerIds passés au moteur (LinkedHashSet = ordre garanti)
+        verify(gameFactory).createGame(eq(3), argThat((Set<UUID> ids) -> ids.iterator().next().equals(userUuid)));
         verify(gameDao).upsert(game);
     }
 

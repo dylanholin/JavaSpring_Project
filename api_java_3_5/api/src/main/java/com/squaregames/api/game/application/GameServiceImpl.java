@@ -35,9 +35,8 @@ public class GameServiceImpl implements GameService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Type de jeu inconnu : " + params.gameType()));
 
         UUID userUuid = UUID.fromString(userId);
-        Set<UUID> playerIds = new HashSet<>();
+        Set<UUID> playerIds = new LinkedHashSet<>();
         playerIds.add(userUuid);
-        // Complète avec des UUID aléatoires pour les autres joueurs
         for (int i = 1; i < params.playerCount(); i++) {
             playerIds.add(UUID.randomUUID());
         }
