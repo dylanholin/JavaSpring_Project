@@ -19,42 +19,115 @@ Créer une **seconde application Spring Boot** dédiée à la gestion des utilis
 
 ## 4.1 — Création de l'API de gestion des utilisateurs
 
-### Structure du projet
+### Structure du projet (réalisée)
 
-**user-api/** (nouveau projet Spring Boot)
+**user-api/** (nouveau projet Spring Boot indépendant)
 ```
 user-api/
-├── pom.xml
-├── src/main/java/com/squaregames/user/
-│   ├── UserApiApplication.java
-│   └── user/
-│       ├── api/
-│       │   ├── UserController.java
-│       │   └── dto/
-│       │       ├── UserCreationRequest.java
-│       │       └── UserDto.java
-│       ├── application/
-│       │   ├── UserService.java
-│       │   ├── UserServiceImpl.java
-│       │   └── UserDao.java
-│       ├── domain/
-│       │   ├── User.java (entité JPA)
-│       │   └── UserRepository.java
-│       └── infrastructure/
-│           └── JpaUserDao.java
-└── src/main/resources/
-    ├── application.properties (port 8081)
-    └── schema.sql
+├── pom.xml                        ← Web + JPA + H2 + Validation
+├── mvnw                           ← Wrapper Maven
+└── src/main/java/com/squaregames/user/
+    ├── UserApiApplication.java    ← Point d'entrée (@SpringBootApplication)
+    └── user/
+        ├── api/
+        │   ├── UserController.java           ← REST : POST/GET/DELETE /users
+        │   └── dto/
+        │       ├── UserCreationRequest.java  ← record : name, email (validés)
+        │       └── UserDto.java              ← record : id, name, email, createdAt
+        ├── application/
+        │   ├── UserService.java              ← Interface : contrat métier
+        │   ├── UserServiceImpl.java          ← Logique métier (injecte UserDao)
+        │   └── UserDao.java                  ← Interface DAO (abstraction)
+        ├── domain/
+        │   ├── User.java                     ← Entité JPA (@Entity, @Table)
+        │   └── UserRepository.java           ← Spring Data JpaRepository
+        └── infrastructure/
+            └── JpaUserDao.java               ← Implémentation DAO via JPA
 ```
+
+### Points clés de l'architecture
+
+**Pourquoi séparer `UserDao` du `UserRepository` ?**
+
+C'est le même principe que dans l'app de jeux avec `GameDao` :
+- `UserRepository` : interface Spring Data (technologie JPA)
+- `UserDao` : interface métier (indépendante de la technologie)
+- `JpaUserDao` : la "colle" entre les deux
+
+```
+UserController → UserService → UserDao ← (interface)
+                                             ↑
+                                         JpaUserDao → UserRepository → Base H2
+```
+
+Si demain tu changes de BDD ou technologie, tu crées un `MongoUserDao` ou `JdbcUserDao` sans toucher au service ni au controller.
+
+### Entité User en détail
+
+```java
+@Entity
+@Table(name = "users")
+public class User {
+
+    @Id
+    @Column(length = 36)
+    private String id;         // UUID généré dans le constructeur
+
+    @Column(nullable = false, length = 100)
+    private String name;
+
+    @Column(nullable = false, unique = true, length = 100)
+    private String email;      // Contrainte UNIQUE en base
+
+    @Column(name = "created_at")
+    private Instant createdAt; // Généré automatiquement dans le constructeur
+
+    public User() {
+        this.id = UUID.randomUUID().toString();
+        this.createdAt = Instant.now();
+    }
+}
+```
+
+💡 **Pourquoi `String id` et pas `@GeneratedValue` ?**
+On génère l'UUID en Java pour avoir l'id **avant** la persistance. Cela permet de le retourner immédiatement dans la réponse HTTP (201 Created) sans faire de SELECT supplémentaire.
+
+### DTOs : les records Java
+
+```java
+// Entrée — validation avec @NotBlank et @Email
+public record UserCreationRequest(
+    @NotBlank String name,
+    @NotBlank @Email String email
+) {}
+
+// Sortie — lecture seule, jamais l'entité JPA directement
+public record UserDto(String id, String name, String email, Instant createdAt) {}
+```
+
+💡 **Règle** : on n'expose jamais directement les entités JPA dans l'API. Les DTOs sont des "vues" de lecture conçues pour le client HTTP.
+
+### Validation automatique avec `@Valid`
+
+```java
+@PostMapping
+public ResponseEntity<UserDto> createUser(@Valid @RequestBody UserCreationRequest request) {
+    // Spring valide automatiquement les contraintes avant d'appeler la méthode
+    // Si invalide → 400 Bad Request automatique
+}
+```
+
+La dépendance `spring-boot-starter-validation` active `@NotBlank`, `@Email`, `@Size`, etc.
 
 ### API REST exposée
 
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| `POST` | `/users` | Créer un utilisateur |
-| `GET` | `/users/{id}` | Récupérer un utilisateur |
-| `DELETE` | `/users/{id}` | Supprimer un utilisateur |
-| `GET` | `/users/{id}/valid` | Vérifier si l'utilisateur existe (booléen) |
+| Méthode | Endpoint | Code retour | Description |
+|---------|----------|-------------|-------------|
+| `POST` | `/users` | `201 Created` | Créer un utilisateur |
+| `GET` | `/users/{id}` | `200` / `404` | Récupérer par id |
+| `GET` | `/users` | `200` | Lister tous les utilisateurs |
+| `DELETE` | `/users/{id}` | `204 No Content` | Supprimer |
+| `GET` | `/users/{id}/valid` | `200` + `true/false` | Vérifier existence (pour l'app de jeux) |
 
 ### Configuration
 
@@ -63,16 +136,20 @@ user-api/
 server.port=8081
 spring.application.name=user-api
 
-# H2 Database (même config que l'app de jeux)
 spring.datasource.url=jdbc:h2:mem:userdb
 spring.datasource.driver-class-name=org.h2.Driver
 spring.datasource.username=sa
 spring.datasource.password=
 
-# JPA
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
 spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+
 spring.h2.console.enabled=true
+spring.h2.console.path=/h2-console
 ```
+
+💡 **`ddl-auto=update`** : Hibernate crée/modifie les tables automatiquement au démarrage. En production on utiliserait `validate` (vérifie que le schéma correspond) ou `none`.
 
 ---
 
