@@ -248,6 +248,53 @@ Prochaines features prévues (à créer au moment de l'itération concernée) :
     - user/                        ← feature "utilisateurs" (itération 4)
     - common/security/             ← configuration JWT/Security (avec user/)
 
+Architecture du projet (Microservices)
+
+Ce projet utilise une architecture microservices avec deux applications Spring Boot séparées :
+
+1. **api** (port 8080) — Application de jeux de plateau
+   - Chemin : api_java_3_5/api/
+   - Responsabilités : gestion des parties, catalogue de jeux, logique métier des jeux
+   - Communication : appelle user-api via RestClient pour valider les utilisateurs
+   - README : api_java_3_5/api/README.md
+
+2. **user-api** (port 8081) — Application de gestion des utilisateurs
+   - Chemin : user-api/
+   - Responsabilités : CRUD utilisateurs, validation d'existence
+   - Communication : API REST autonome, appelée par api
+   - README : user-api/README.md
+
+Pourquoi deux applications séparées ?
+- Itération 4 demande explicitement une architecture microservices
+- Séparation des domaines métiers (jeux vs utilisateurs)
+- Scalabilité indépendante possible
+- Déploiement séparé possible
+
+Structure des répertoires :
+```
+JavaSpring_Project/
+├── api_java_3_5/api/          ← Application de jeux (port 8080)
+│   ├── src/main/java/...      ← Code source
+│   ├── src/test/java/...      ← Tests
+│   ├── pom.xml                ← Maven
+│   ├── README.md              ← Documentation spécifique
+│   └── .gitignore             ← Git ignore spécifique
+├── user-api/                  ← Application utilisateurs (port 8081)
+│   ├── src/main/java/...      ← Code source
+│   ├── src/test/java/...      ← Tests
+│   ├── pom.xml                ← Maven
+│   ├── README.md              ← Documentation spécifique
+│   └── .gitignore             ← Git ignore spécifique
+├── explication4.md            ← Documentation pédagogique itération 4
+├── suivi.md                   ← Suivi de progression
+└── AGENTS.md                  ← Ce fichier (règles pour l'IA)
+```
+
+Communication inter-services :
+- api → user-api : GET http://localhost:8081/users/{id}/valid
+- Configuré dans api/src/main/resources/application.properties : user.service.url=http://localhost:8081
+- Utilise RestClient (Spring Boot 3.2+)
+
 Règles de génération pour les nouvelles features :
 
     Avant de coder, proposer l'arborescence exacte des fichiers à créer.
