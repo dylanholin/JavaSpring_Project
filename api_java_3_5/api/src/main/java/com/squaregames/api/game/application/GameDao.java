@@ -32,4 +32,9 @@ public interface GameDao {
      * Supprime une partie.
      */
     void delete(UUID gameId);
+
+    /**
+     * Récupère les parties auxquelles participe un joueur donné.
+     */
+    Collection<Game> findByPlayerId(String playerId);
 }

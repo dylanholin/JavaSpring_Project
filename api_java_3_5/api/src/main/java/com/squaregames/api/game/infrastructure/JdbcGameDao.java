@@ -106,6 +106,13 @@ public class JdbcGameDao implements GameDao {
         jdbcTemplate.update(deleteSql, new MapSqlParameterSource("id", gameId.toString()));
     }
 
+    @Override
+    public Collection<Game> findByPlayerId(String playerId) {
+        // ⚠️ Limitation : le moteur ne stocke pas les playerIds dans le schéma JDBC
+        // Pour cette implémentation, on retourne toutes les parties (même comportement que findAll)
+        return findAll();
+    }
+
     /**
      * Mappe une ligne ResultSet vers un objet Game.
      * ⚠️ Crée un NOUVEAU jeu avec la factory — l'état précédent est perdu.

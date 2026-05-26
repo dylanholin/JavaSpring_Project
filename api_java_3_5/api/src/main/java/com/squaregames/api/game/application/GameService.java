@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.UUID;
 
 public interface GameService {
-    GameDto createGame(GameCreationParams params);
-    Collection<GameDto> listGames();
+    GameDto createGame(GameCreationParams params, String userId);
+    Collection<GameDto> listGames(String userId);
     GameDto getGame(UUID gameId);
     List<TokenMovesDto> getPossibleMoves(UUID gameId);
-    GameDto playMove(UUID gameId, MoveRequest move);
+    GameDto playMove(UUID gameId, MoveRequest move, String userId);
 }

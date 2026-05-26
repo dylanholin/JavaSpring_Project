@@ -17,14 +17,18 @@ public class GameServiceImpl implements GameService {
 
     private final GameDao gameDao;
     private final List<GamePlugin> plugins;
+    private final UserValidator userValidator;
 
-    public GameServiceImpl(GameDao gameDao, List<GamePlugin> plugins) {
+    public GameServiceImpl(GameDao gameDao, List<GamePlugin> plugins, UserValidator userValidator) {
         this.gameDao = gameDao;
         this.plugins = plugins;
+        this.userValidator = userValidator;
     }
 
     @Override
-    public GameDto createGame(GameCreationParams params) {
+    public GameDto createGame(GameCreationParams params, String userId) {
+        userValidator.validate(userId);
+
         GamePlugin plugin = plugins.stream()
                 .filter(p -> p.getGameType().equals(params.gameType()))
                 .findFirst()
@@ -36,8 +40,9 @@ public class GameServiceImpl implements GameService {
     }
 
     @Override
-    public Collection<GameDto> listGames() {
-        return gameDao.findAll().stream()
+    public Collection<GameDto> listGames(String userId) {
+        userValidator.validate(userId);
+        return gameDao.findByPlayerId(userId).stream()
                 .map(this::toDto)
                 .toList();
     }
@@ -70,8 +75,17 @@ public class GameServiceImpl implements GameService {
     }
 
     @Override
-    public GameDto playMove(UUID gameId, MoveRequest move) {
+    public GameDto playMove(UUID gameId, MoveRequest move, String userId) {
+        userValidator.validate(userId);
         Game game = findGame(gameId);
+
+        // Vérifie que c'est bien le tour du joueur qui envoie la requête
+        UUID currentPlayerId = game.getCurrentPlayerId();
+        if (currentPlayerId != null && !currentPlayerId.toString().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Ce n'est pas votre tour. Joueur courant : " + currentPlayerId);
+        }
+
         Token token = Stream.concat(
                 game.getBoard().values().stream(),
                 game.getRemainingTokens().stream()
@@ -99,7 +113,8 @@ public class GameServiceImpl implements GameService {
                 game.getFactoryId(),
                 game.getPlayerIds().size(),
                 game.getBoardSize(),
-                game.getStatus().name()
+                game.getStatus().name(),
+                game.getCurrentPlayerId()
         );
     }
 }

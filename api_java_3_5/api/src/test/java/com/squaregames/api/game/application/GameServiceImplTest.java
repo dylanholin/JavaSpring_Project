@@ -38,14 +38,20 @@ class GameServiceImplTest {
     @Mock
     private Game game;
 
+    @Mock
+    private UserValidator userValidator;
+
     private GameServiceImpl gameService;
+
+    private static final String USER_ID = "user-123";
 
     @BeforeEach
     void setUp() {
         lenient().when(gamePlugin.getGameType()).thenReturn("tictactoe");
         lenient().when(gamePlugin.getFactory()).thenReturn(gameFactory);
+        lenient().doNothing().when(userValidator).validate(any());
 
-        gameService = new GameServiceImpl(gameDao, List.of(gamePlugin));
+        gameService = new GameServiceImpl(gameDao, List.of(gamePlugin), userValidator);
     }
 
     @Test
@@ -63,7 +69,7 @@ class GameServiceImplTest {
         when(gameDao.upsert(any(Game.class))).thenReturn(game);
 
         // When
-        GameDto result = gameService.createGame(params);
+        GameDto result = gameService.createGame(params, USER_ID);
 
         // Then
         assertThat(result).isNotNull();
@@ -78,7 +84,7 @@ class GameServiceImplTest {
         GameCreationParams params = new GameCreationParams("unknown", 2, 3);
 
         // Then
-        assertThatThrownBy(() -> gameService.createGame(params))
+        assertThatThrownBy(() -> gameService.createGame(params, USER_ID))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> {
                     ResponseStatusException rex = (ResponseStatusException) ex;
@@ -89,7 +95,7 @@ class GameServiceImplTest {
     @Test
     void shouldListGames() {
         // Given
-        when(gameDao.findAll()).thenReturn(List.of(game));
+        when(gameDao.findByPlayerId(USER_ID)).thenReturn(List.of(game));
         when(game.getId()).thenReturn(UUID.randomUUID());
         when(game.getFactoryId()).thenReturn("tictactoe");
         when(game.getPlayerIds()).thenReturn(Set.of(UUID.randomUUID()));
@@ -97,11 +103,11 @@ class GameServiceImplTest {
         when(game.getStatus()).thenReturn(fr.le_campus_numerique.square_games.engine.GameStatus.ONGOING);
 
         // When
-        Collection<GameDto> result = gameService.listGames();
+        Collection<GameDto> result = gameService.listGames(USER_ID);
 
         // Then
         assertThat(result).hasSize(1);
-        verify(gameDao).findAll();
+        verify(gameDao).findByPlayerId(USER_ID);
     }
 
     @Test

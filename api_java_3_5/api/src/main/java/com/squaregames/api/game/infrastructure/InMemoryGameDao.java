@@ -39,4 +39,13 @@ public class InMemoryGameDao implements GameDao {
     public void delete(UUID gameId) {
         games.remove(gameId);
     }
+
+    @Override
+    public Collection<Game> findByPlayerId(String playerId) {
+        return games.values().stream()
+                .filter(game -> game.getPlayerIds().stream()
+                        .map(Object::toString)
+                        .anyMatch(playerId::equals))
+                .toList();
+    }
 }

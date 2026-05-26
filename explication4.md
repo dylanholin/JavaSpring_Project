@@ -155,68 +155,164 @@ spring.h2.console.path=/h2-console
 
 ## 4.2 — Modification de l'API de jeux de plateau
 
-### Entête X-UserId
+### Entête X-UserId (réalisé)
 
-Toutes les requêtes de jeu doivent inclure l'entête `X-UserId` :
+Les endpoints `POST /games`, `GET /games` et `POST /games/{id}/moves` reçoivent maintenant l'identifiant du joueur :
+
 ```java
-@GetMapping("/games")
-public List<GameDto> getMyGames(
-    @RequestHeader("X-UserId") String userId
-) {
-    // Ne retourner que les parties du joueur
+@PostMapping
+public GameDto createGame(@RequestBody GameCreationParams params,
+                          @RequestHeader("X-UserId") String userId) {
+    return gameService.createGame(params, userId);
+}
+
+@GetMapping
+public Collection<GameDto> listGames(@RequestHeader("X-UserId") String userId) {
+    return gameService.listGames(userId);
+}
+
+@PostMapping("/{gameId}/moves")
+public GameDto playMove(@PathVariable UUID gameId, @RequestBody MoveRequest move,
+                        @RequestHeader("X-UserId") String userId) {
+    return gameService.playMove(gameId, move, userId);
 }
 ```
+
+💡 **`@RequestHeader("X-UserId")`** : Spring injecte automatiquement la valeur de l'entête HTTP. Si l'entête est absent, Spring retourne `400 Bad Request`.
+
+### Architecture — interface UserValidator
+
+Pour garder le service testable, la validation utilisateur est extraite dans une interface dédiée :
+
+```
+GameController
+     │ X-UserId header
+     ▼
+GameServiceImpl
+     │ userValidator.validate(userId)
+     ▼
+UserValidator ←── interface (testable par mock)
+     ▲
+RestUserValidator ←── implémentation (appelle user-api via RestClient)
+```
+
+**Pourquoi une interface ?**
+Sans interface, on ne peut pas mocker facilement l'appel HTTP dans les tests d'intégration.
+Avec l'interface, on injecte un mock dans les tests → zéro dépendance vers user-api pendant les tests.
+
+### Interface UserValidator
+
+```java
+public interface UserValidator {
+    void validate(String userId);
+    // Lance ResponseStatusException 403 si l'utilisateur est inconnu
+}
+```
+
+### Implémentation RestUserValidator
+
+```java
+@Component
+public class RestUserValidator implements UserValidator {
+
+    private final RestClient restClient;
+    private final String userServiceUrl;
+
+    public RestUserValidator(RestClient.Builder builder,
+                             @Value("${user.service.url}") String userServiceUrl) {
+        this.restClient = builder.build();
+        this.userServiceUrl = userServiceUrl;
+    }
+
+    @Override
+    public void validate(String userId) {
+        try {
+            Boolean valid = restClient.get()
+                .uri(userServiceUrl + "/users/{id}/valid", userId)
+                .retrieve()
+                .body(Boolean.class);
+            if (!Boolean.TRUE.equals(valid)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Utilisateur inconnu");
+            }
+        } catch (RestClientException e) {
+            // user-api inaccessible → 403
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Service inaccessible");
+        }
+    }
+}
+```
+
+💡 **`RestClient.Builder`** : Spring Boot 3.x fournit un `RestClient.Builder` préconfiguré en tant que bean. On l'injecte par constructeur et on appelle `.build()`.
+
+💡 **`@Value("${user.service.url}")`** : lit la propriété dans `application.properties`. Cela permet de changer l'URL sans recompiler.
 
 ### Règles métier avec identification
 
-| Fonctionnalité | Règle |
-|----------------|-------|
-| **Créer partie** | Associer le `X-UserId` comme créateur/joueur |
-| **Lister parties** | Ne retourner que celles où `X-UserId` participe |
-| **Jouer coup** | Vérifier que `currentPlayerId == X-UserId`, sinon `403 Forbidden` |
-| **Validation** | Appeler `GET /users/{id}/valid` sur le service utilisateurs |
+| Fonctionnalité | Règle métier | Code HTTP |
+|----------------|--------------|-----------|
+| **Créer partie** | Valide `X-UserId` via user-api | `403` si inconnu |
+| **Lister parties** | Filtre par `findByPlayerId(userId)` dans le DAO | Liste filtrée |
+| **Jouer coup** | Vérifie `currentPlayerId == userId`, sinon refuse | `403 Forbidden` |
+| **Header absent** | Spring rejette automatiquement | `400 Bad Request` |
 
-### Communication inter-services avec RestClient
+### GameDao — nouvelle méthode findByPlayerId
 
-**Configuration** :
 ```java
-@Configuration
-public class RestClientConfig {
-    
-    @Bean
-    public RestClient userServiceRestClient(@Value("${user.service.url}") String baseUrl) {
-        return RestClient.builder()
-            .baseUrl(baseUrl)
-            .build();
-    }
+// Interface GameDao (application)
+Collection<Game> findByPlayerId(String playerId);
+
+// InMemoryGameDao (infrastructure)
+@Override
+public Collection<Game> findByPlayerId(String playerId) {
+    return games.values().stream()
+        .filter(game -> game.getPlayerIds().stream()
+            .map(Object::toString)
+            .anyMatch(playerId::equals))
+        .toList();
 }
 ```
 
-**application.properties** (app de jeux) :
+💡 **Pourquoi `Object::toString` ?** Le moteur stocke les `playerIds` en `Collection<UUID>` alors que `X-UserId` est une `String`. On convertit les UUID en String pour comparer correctement.
+
+### GameDto — ajout de currentPlayerId
+
+```java
+public record GameDto(
+    UUID id,
+    String gameType,
+    int playerCount,
+    int boardSize,
+    String status,
+    UUID currentPlayerId  // ← ajouté pour que le client sache à qui c'est le tour
+) {}
+```
+
+### Configuration (application.properties)
+
 ```properties
+# URL du service utilisateurs (user-api)
 user.service.url=http://localhost:8081
 ```
 
-**Utilisation dans le service** :
+### Stratégie de test avec @MockitoBean
+
+Dans les tests d'intégration, on ne veut pas démarrer user-api. On mock `UserValidator` :
+
 ```java
-@Service
-public class GameServiceImpl implements GameService {
-    
-    private final RestClient userServiceClient;
-    
-    public GameServiceImpl(RestClient userServiceClient, ...) {
-        this.userServiceClient = userServiceClient;
-    }
-    
-    private boolean isValidUser(String userId) {
-        Boolean exists = userServiceClient.get()
-            .uri("/users/{id}/valid", userId)
-            .retrieve()
-            .body(Boolean.class);
-        return Boolean.TRUE.equals(exists);
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+class GameControllerIntegrationTest {
+
+    @MockitoBean
+    private UserValidator userValidator; // ← remplace le bean Spring par un mock
+
+    @BeforeEach
+    void setUp() {
+        doNothing().when(userValidator).validate(anyString()); // accepte tout userId
     }
 }
 ```
+
+💡 **`@MockitoBean`** (Spring Boot 3.4+, remplace `@MockBean` déprécié) : remplace le vrai bean Spring par un mock Mockito dans le contexte d'application de test.
 
 ---
 

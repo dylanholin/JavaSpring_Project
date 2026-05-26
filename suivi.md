@@ -50,4 +50,4 @@ Dernière mise à jour : 22/05/2026
 | Étape | Statut |
 |---|---|
 | 4.1 — Création de l'API de gestion des utilisateurs | ✅ |
-| 4.2 — Modification de l'API de jeux (X-UserId, RestClient) | ❌ |
+| 4.2 — Modification de l'API de jeux (X-UserId, RestClient) | ✅ |

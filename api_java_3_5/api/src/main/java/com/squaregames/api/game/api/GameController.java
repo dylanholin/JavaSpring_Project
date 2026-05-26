@@ -19,13 +19,14 @@ public class GameController {
     }
 
     @PostMapping
-    public GameDto createGame(@RequestBody GameCreationParams params) {
-        return gameService.createGame(params);
+    public GameDto createGame(@RequestBody GameCreationParams params,
+                              @RequestHeader("X-UserId") String userId) {
+        return gameService.createGame(params, userId);
     }
 
     @GetMapping
-    public Collection<GameDto> listGames() {
-        return gameService.listGames();
+    public Collection<GameDto> listGames(@RequestHeader("X-UserId") String userId) {
+        return gameService.listGames(userId);
     }
 
     @GetMapping("/{gameId}")
@@ -39,7 +40,8 @@ public class GameController {
     }
 
     @PostMapping("/{gameId}/moves")
-    public GameDto playMove(@PathVariable UUID gameId, @RequestBody MoveRequest move) {
-        return gameService.playMove(gameId, move);
+    public GameDto playMove(@PathVariable UUID gameId, @RequestBody MoveRequest move,
+                            @RequestHeader("X-UserId") String userId) {
+        return gameService.playMove(gameId, move, userId);
     }
 }

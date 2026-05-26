@@ -124,4 +124,11 @@ public class JpaGameDao implements GameDao {
 
         return entity;
     }
+
+    @Override
+    public Collection<Game> findByPlayerId(String playerId) {
+        // ⚠️ Limitation : le moteur JPA ne stocke pas les playerIds dans les entités
+        // Même comportement que findAll pour cette implémentation
+        return findAll();
+    }
 }

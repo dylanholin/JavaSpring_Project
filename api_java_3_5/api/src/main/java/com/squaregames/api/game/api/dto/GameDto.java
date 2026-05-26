@@ -7,5 +7,6 @@ public record GameDto(
         String gameType,
         int playerCount,
         int boardSize,
-        String status
+        String status,
+        UUID currentPlayerId
 ) {}
