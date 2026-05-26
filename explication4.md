@@ -287,6 +287,25 @@ public record GameDto(
 ) {}
 ```
 
+### Comprendre les différents IDs dans le système
+
+Le système utilise **trois types d'IDs différents** qui ont des rôles distincts :
+
+| Type d'ID | Source | Rôle | Stabilité |
+|-----------|--------|------|-----------|
+| **ID utilisateur** | `user-api` (création utilisateur) | Identifie l'utilisateur dans toute l'application | Ne change jamais |
+| **ID de partie** | `api` (création partie) | Identifie la partie spécifique pour jouer/lister | Ne change jamais |
+| **currentPlayerId** | `api` (réponse création/partie) | Indique à qui est le tour de jouer | **Change après chaque coup** |
+
+**Exemple de flux :**
+
+1. Créer Alice → `82e6a9eb-...` (ID utilisateur)
+2. Créer une partie → `34950b83-...` (ID partie), `currentPlayerId = 82e6a9eb-...` (c'est à Alice)
+3. Alice joue → `currentPlayerId = fe92625a-...` (c'est à l'adversaire)
+4. Adversaire joue → `currentPlayerId = 82e6a9eb-...` (c'est à nouveau à Alice)
+
+**Pourquoi `currentPlayerId` change ?** C'est la logique du jeu de plateau — chaque joueur joue à son tour. Le champ indique "à qui est-ce le tour maintenant ?" et permet au serveur de vérifier que le joueur qui tente de jouer est bien celui dont c'est le tour (sinon `403 Forbidden`).
+
 ### Configuration (application.properties)
 
 ```properties
