@@ -75,3 +75,20 @@ Pour valider que l'API fonctionne, on ne se contente pas seulement du navigateur
 
 ### Ce qu'il faut faire :
 Installer **Bruno** (ou Postman), créer une nouvelle requête HTTP de type `GET` vers l'URL `http://localhost:8080/heartbeat`, et l'exécuter. Cela valide le dernier livrable de votre itération 1 !
+
+---
+
+## Ce qu'il faut retenir (Synthèse itérations 1-4)
+
+1. **Maven + GitHub Packages** : une dépendance privée nécessite un token dans `settings.xml` et un `<repository>` dans `pom.xml` avec le même `<id>`.
+2. **REST** : `POST` pour créer/agir, `GET` pour lire, ressources au pluriel, identifiant dans l'URL.
+3. **DTO** : ne jamais exposer directement les objets du domaine ou de la librairie externe.
+4. **Architecture en couches** : Controller → Service → Plugin → Moteur. Chaque couche a une responsabilité unique.
+5. **@Value** : externaliser les valeurs par défaut dans `application.properties`.
+6. **MessageSource** : traduire les noms de jeux via `messages.properties` et le header `Accept-Language`.
+7. **List<GamePlugin>** : Spring injecte automatiquement tous les plugins, ce qui rend l'ajout d'un nouveau jeu trivial.
+8. **Microservices** : deux applications indépendantes (api:8080 + user-api:8081) communiquant par REST.
+9. **JPA** : mapping objet-relationnel avec `@Entity`, `@Repository` génère automatiquement les requêtes SQL.
+10. **Tests 3 niveaux** : Intégration (golden master) → Contrat (WireMock) → Unitaires (Mockito).
+
+📚 **Pour aller plus loin** : voir [`lexique-concepts.md`](lexique-concepts.md) pour la correspondance complète entre chaque concept et son fichier dans le projet.
