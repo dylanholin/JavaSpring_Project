@@ -60,10 +60,11 @@ class GameServiceImplTest {
         GameCreationParams params = new GameCreationParams("tictactoe", 2, 3);
         UUID gameId = UUID.randomUUID();
 
+        UUID userUuid = UUID.fromString(USER_ID);
         when(gameFactory.createGame(anyInt(), any(Set.class))).thenReturn(game);
         when(game.getId()).thenReturn(gameId);
         when(game.getFactoryId()).thenReturn("tictactoe");
-        when(game.getPlayerIds()).thenReturn(Set.of(UUID.randomUUID(), UUID.randomUUID()));
+        when(game.getPlayerIds()).thenReturn(Set.of(userUuid, UUID.randomUUID()));
         when(game.getBoardSize()).thenReturn(3);
         when(game.getStatus()).thenReturn(fr.le_campus_numerique.square_games.engine.GameStatus.ONGOING);
         when(gameDao.upsert(any(Game.class))).thenReturn(game);
@@ -75,7 +76,45 @@ class GameServiceImplTest {
         assertThat(result).isNotNull();
         assertThat(result.id()).isEqualTo(gameId);
         assertThat(result.gameType()).isEqualTo("tictactoe");
+        // Vérifie que l'userId est bien passé comme playerId au moteur
+        verify(gameFactory).createGame(eq(3), argThat((Set<UUID> ids) -> ids.contains(userUuid)));
         verify(gameDao).upsert(game);
+    }
+
+    @Test
+    void shouldRejectInvalidUserIdFormat() {
+        // Un userId non-UUID doit lever une exception avant même d'appeler le moteur
+        GameCreationParams params = new GameCreationParams("tictactoe", 2, 3);
+
+        assertThatThrownBy(() -> gameService.createGame(params, "not-a-uuid"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void shouldValidateUserOnCreateGame() {
+        GameCreationParams params = new GameCreationParams("tictactoe", 2, 3);
+        UUID userUuid = UUID.fromString(USER_ID);
+        when(gameFactory.createGame(anyInt(), any(Set.class))).thenReturn(game);
+        when(game.getId()).thenReturn(UUID.randomUUID());
+        when(game.getFactoryId()).thenReturn("tictactoe");
+        when(game.getPlayerIds()).thenReturn(Set.of(userUuid));
+        when(game.getBoardSize()).thenReturn(3);
+        when(game.getStatus()).thenReturn(fr.le_campus_numerique.square_games.engine.GameStatus.ONGOING);
+        when(gameDao.upsert(any())).thenReturn(game);
+
+        gameService.createGame(params, USER_ID);
+
+        // Vérifie que la validation utilisateur est bien appelée
+        verify(userValidator).validate(USER_ID);
+    }
+
+    @Test
+    void shouldValidateUserOnListGames() {
+        when(gameDao.findByPlayerId(USER_ID)).thenReturn(List.of());
+
+        gameService.listGames(USER_ID);
+
+        verify(userValidator).validate(USER_ID);
     }
 
     @Test

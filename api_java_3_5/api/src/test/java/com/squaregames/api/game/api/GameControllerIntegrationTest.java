@@ -191,6 +191,52 @@ class GameControllerIntegrationTest {
     }
 
     @Test
+    void shouldReturn403WhenWrongPlayerTriesToPlay() {
+        // Un userId différent du currentPlayerId doit recevoir 403
+        String wrongUserId = UUID.randomUUID().toString();
+        MoveRequest move = new MoveRequest("X", 0, 0);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("X-UserId", wrongUserId);
+        HttpEntity<MoveRequest> request = new HttpEntity<>(move, headers);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/games/" + createdGameId + "/moves",
+                HttpMethod.POST,
+                request,
+                String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    void shouldReturn400WhenXUserIdHeaderMissingOnCreate() {
+        // Sans header X-UserId, Spring doit retourner 400
+        GameCreationParams params = new GameCreationParams("tictactoe", 2, 3);
+        HttpEntity<GameCreationParams> entity = new HttpEntity<>(params);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/games", HttpMethod.POST, entity, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void shouldReturn400WhenXUserIdHeaderMissingOnPlayMove() {
+        // Sans header X-UserId, Spring doit retourner 400
+        MoveRequest move = new MoveRequest("X", 0, 0);
+        HttpEntity<MoveRequest> entity = new HttpEntity<>(move);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/games/" + createdGameId + "/moves",
+                HttpMethod.POST,
+                entity,
+                String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
     void shouldCreateDifferentGameTypes() {
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-UserId", TEST_USER_ID);
