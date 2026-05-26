@@ -194,13 +194,62 @@ cd user-api
 
 ```
 JavaSpring_Project/
-├── api_java_3_5/api/     ← Application de jeux (port 8080)
+├── api_java_3_5/api/                 ← Application de jeux (port 8080)
+│   ├── src/main/java/com/squaregames/api/
+│   │   ├── ApiApplication.java       ← Classe principale
+│   │   ├── common/                   ← Transverse (config, exceptions, sécurité)
+│   │   │   ├── config/
+│   │   │   ├── exception/
+│   │   │   └── security/
+│   │   └── game/                     ← Feature "jeu" (organisée par couches)
+│   │       ├── api/                  ← Couche REST (contrôleurs + DTO)
+│   │       │   ├── GameController.java
+│   │       │   ├── GameCatalogController.java
+│   │       │   └── dto/
+│   │       ├── application/          ← Couche service + plugins
+│   │       │   ├── GameService.java
+│   │       │   ├── GamePlugin.java
+│   │       │   ├── TicTacToePlugin.java
+│   │       │   ├── ConnectFourPlugin.java
+│   │       │   ├── TaquinPlugin.java
+│   │       │   ├── GameCatalog.java
+│   │       │   └── UserValidator.java
+│   │       ├── domain/               ← Modèle métier (entités JPA, repositories)
+│   │       │   ├── GameEntity.java
+│   │       │   ├── GameEntityRepository.java
+│   │       │   └── GameTokenEntity.java
+│   │       └── infrastructure/       ← Adapters techniques (JPA, clients externes)
+│   │           ├── JdbcGameDao.java
+│   │           ├── JpaGameDao.java
+│   │           └── RestUserValidator.java
+│   ├── src/test/java/...              ← Tests unitaires et d'intégration
 │   ├── README.md
 │   └── pom.xml
-├── user-api/             ← Application utilisateurs (port 8081)
+├── user-api/                         ← Application utilisateurs (port 8081)
+│   ├── src/main/java/com/squaregames/user/
+│   │   ├── UserApiApplication.java   ← Classe principale
+│   │   └── user/                     ← Feature "utilisateur"
+│   │       ├── api/                  ← Couche REST
+│   │       │   ├── UserController.java
+│   │       │   └── dto/
+│   │       ├── application/          ← Couche service
+│   │       │   ├── UserService.java
+│   │       │   └── UserDao.java
+│   │       ├── domain/               ← Modèle métier
+│   │       │   ├── User.java
+│   │       │   └── UserRepository.java
+│   │       └── infrastructure/       ← Couche persistance
+│   │           └── JpaUserDao.java
+│   ├── src/test/java/...              ← Tests
 │   ├── README.md
 │   └── pom.xml
-├── explication3.md       ← Documentation pédagogique itération 3
-├── explication4.md       ← Documentation pédagogique itération 4
-└── suivi.md              ← Suivi de progression
+├── cda-java-spring-game-engine-main/  ← Moteur de jeu externe (bibliothèque)
+├── AGENTS.md                          ← Règles de travail pour l'IA
+├── explication.md                     ← Documentation pédagogique itération 1
+├── explication2.md                    ← Documentation pédagogique itération 2
+├── explication3.md                    ← Documentation pédagogique itération 3
+├── explication4.md                    ← Documentation pédagogique itération 4
+├── explication5.md                    ← Documentation pédagogique itération 5
+├── suivi.md                           ← Suivi de progression
+└── README.md                          ← Ce fichier
 ```
