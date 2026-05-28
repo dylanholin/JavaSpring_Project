@@ -605,10 +605,65 @@ spring.profiles.active=h2
 
 ---
 
+## Tests JPA — JpaGameDaoTest
+
+**Objectif** : valider spécifiquement `JpaGameDao` en dehors du Golden Master principal (qui utilise `InMemoryGameDao` via `@Primary`).
+
+**Fichier** : `game/infrastructure/JpaGameDaoTest.java`
+
+**Technologie** : `@DataJpaTest` — démarre uniquement la couche JPA avec H2 en mémoire, sans lancer tout Spring Boot.
+
+```java
+@DataJpaTest
+class JpaGameDaoTest {
+    @Autowired
+    private GameEntityRepository repository;
+    private JpaGameDao jpaGameDao;
+
+    @BeforeEach
+    void setUp() {
+        jpaGameDao = new JpaGameDao(repository);
+        repository.deleteAll();
+    }
+}
+```
+
+**Tests couverts** :
+- `shouldPersistAndRetrieveGameById` : vérifie qu'une partie est bien persistée et retrouvable
+- `shouldReturnEmptyWhenGameNotFound` : id inconnu → `Optional.empty()`
+- `shouldFindByPlayerIdReturnsOnlyGamesOfThatPlayer` : filtre correct par joueur
+- `shouldFindByPlayerIdReturnsEmptyWhenNoMatch` : joueur sans parties → liste vide
+- `shouldFindByPlayerIdReturnsBothGamesWhenPlayerParticipatesInMultiple` : joueur avec 2 parties sur 3
+- `shouldDeleteGame` : suppression effective
+- `shouldPersistPlayerIdsInDatabase` : vérification directe en base que `player_ids` est bien stocké
+
+**Limitation documentée dans les tests** : `convertToGame` recrée un jeu vierge via la factory (contrainte du moteur). Les tests vérifient les données via `GameEntityRepository` directement lorsque l'id exact est nécessaire.
+
+### Bug corrigé lors de l'écriture des tests
+
+Les tests ont révélé un bug dans `JpaGameDao.convertToEntity` :
+
+- **Cause** : `token.getOwnerId()` retourne `Optional<UUID>`, pas `UUID`. Le code `token.getOwnerId() != null` était toujours `true` (un Optional n'est jamais null), et `.toString()` produisait `"Optional[uuid]"` au lieu de l'UUID.
+- **Conséquence** : `DataIntegrityViolation` sur la colonne `owner_id VARCHAR(36)` (46 caractères au lieu de 36).
+- **Correction** :
+
+```java
+// Avant (bugué)
+tokenEntity.ownerId = token.getOwnerId() != null ? token.getOwnerId().toString() : null;
+
+// Après (correct)
+tokenEntity.ownerId = token.getOwnerId().map(Object::toString).orElse(null);
+```
+
+Ce bug était **invisible dans les tests d'intégration existants** car ceux-ci utilisent `InMemoryGameDao` (`@Primary`) — `JpaGameDao` n'était jamais sollicité.
+
+---
+
 ## Livrables attendus
 
 - Interface `GameDao` et implémentation `InMemoryGameDao`
 - Implémentation `JdbcGameDao` avec SQL explicite
 - Implémentation `JpaGameDao` avec Spring Data JPA
 - Entités JPA `GameEntity` et `GameTokenEntity`
-- Les parties survivent au redémarrage de l'application
+- `playerIds` persistés dans `GameEntity` (colonne `player_ids`)
+- Tests `JpaGameDaoTest` validant la couche JPA directement
