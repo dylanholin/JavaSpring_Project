@@ -40,6 +40,7 @@ class JpaGameDaoTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void shouldPersistAndRetrieveGameById() {
         // Given
         Game game = createTicTacToeGame(PLAYER_A, PLAYER_B);
@@ -150,6 +151,7 @@ class JpaGameDaoTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void shouldPersistPlayerIdsInDatabase() {
         // Given
         Game game = createTicTacToeGame(PLAYER_A, PLAYER_B);
