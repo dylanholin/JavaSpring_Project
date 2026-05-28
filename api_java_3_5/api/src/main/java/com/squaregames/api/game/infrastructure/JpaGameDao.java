@@ -104,7 +104,7 @@ public class JpaGameDao implements GameDao {
             GameTokenEntity tokenEntity = new GameTokenEntity();
             tokenEntity.game = entity;
             tokenEntity.tokenName = token.getName();
-            tokenEntity.ownerId = token.getOwnerId() != null ? token.getOwnerId().toString() : null;
+            tokenEntity.ownerId = token.getOwnerId().map(Object::toString).orElse(null);
             tokenEntity.isOnBoard = true;
             tokenEntity.isRemoved = false;
 
@@ -122,7 +122,7 @@ public class JpaGameDao implements GameDao {
             GameTokenEntity tokenEntity = new GameTokenEntity();
             tokenEntity.game = entity;
             tokenEntity.tokenName = token.getName();
-            tokenEntity.ownerId = token.getOwnerId() != null ? token.getOwnerId().toString() : null;
+            tokenEntity.ownerId = token.getOwnerId().map(Object::toString).orElse(null);
             tokenEntity.isOnBoard = false;
             tokenEntity.isRemoved = false;
             entity.tokens.add(tokenEntity);
