@@ -1,6 +1,6 @@
 # Suivi du projet SquareGames
 
-Dernière mise à jour : 26/05/2026
+Dernière mise à jour : 28/05/2026
 
 ---
 
@@ -29,10 +29,10 @@ Dernière mise à jour : 26/05/2026
 
 | Étape | Statut |
 |---|---|
-| 3.1 — Comprendre le pattern DAO (lecture) | ❌ |
+| 3.1 — Comprendre le pattern DAO (lecture) | ✅ |
 | 3.2 — Mise en place du DAO en mémoire (refactoring) | ✅ |
 | 3.3 — Implémentation du DAO avec JDBC (SQL explicite) | ✅ |
-| 3.4 — Implémentation du DAO avec JPA / Spring Data (SQL automatisé) | ✅ |
+| 3.4 — Implémentation du DAO avec JPA / Spring Data (SQL automatisé) | ✅ (limitation : état des coups non restaurable via le moteur, playerIds corrigé) |
 | 3.5 — Gérer plusieurs sources de données avec profils Spring (bonus) | ✅ |
 
 ---

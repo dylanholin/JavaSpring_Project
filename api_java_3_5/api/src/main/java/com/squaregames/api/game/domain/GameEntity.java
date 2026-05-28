@@ -26,6 +26,9 @@ public class GameEntity {
     @Column(name = "player_count", nullable = false)
     public int playerCount;
 
+    @Column(name = "player_ids", length = 1000)
+    public String playerIds;
+
     @Column(nullable = false, length = 20)
     public String status;
 

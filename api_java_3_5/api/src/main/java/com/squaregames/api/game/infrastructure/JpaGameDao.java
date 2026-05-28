@@ -94,6 +94,9 @@ public class JpaGameDao implements GameDao {
         entity.boardSize = game.getBoardSize();
         entity.playerCount = game.getPlayerIds().size();
         entity.status = game.getStatus().name();
+        entity.playerIds = game.getPlayerIds().stream()
+                .map(Object::toString)
+                .collect(java.util.stream.Collectors.joining(","));
 
         // Conversion des tokens
         entity.tokens.clear();
@@ -130,8 +133,15 @@ public class JpaGameDao implements GameDao {
 
     @Override
     public Collection<Game> findByPlayerId(String playerId) {
-        // ⚠️ Limitation : le moteur JPA ne stocke pas les playerIds dans les entités
-        // Même comportement que findAll pour cette implémentation
-        return findAll();
+        List<Game> games = new ArrayList<>();
+        for (GameEntity entity : repository.findAll()) {
+            if (entity.playerIds != null && entity.playerIds.contains(playerId)) {
+                Game game = convertToGame(entity);
+                if (game != null) {
+                    games.add(game);
+                }
+            }
+        }
+        return games;
     }
 }
