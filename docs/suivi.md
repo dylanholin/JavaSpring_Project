@@ -44,6 +44,9 @@ Dernière mise à jour : 28/05/2026
 | Tests d'intégration API (GameController) | ✅ |
 | Tests catalogue (GameCatalogController) | ✅ |
 | Tests unitaires Service (GameServiceImpl) | ✅ |
+| Tests JPA ciblés (JpaGameDaoTest — @DataJpaTest) | ✅ |
+
+---
 
 ## Itération 4 — Utilisateurs & Sécurité
 
@@ -51,3 +54,10 @@ Dernière mise à jour : 28/05/2026
 |---|---|
 | 4.1 — Création de l'API de gestion des utilisateurs | ✅ |
 | 4.2 — Modification de l'API de jeux (X-UserId, RestClient) | ✅ |
+
+## Tests — Itération 4
+
+| Étape | Statut |
+|---|---|
+| Tests d'intégration user-api (UserControllerIntegrationTest) | ✅ |
+| Tests de contrat inter-services (UserValidationContractTest — WireMock) | ✅ |
