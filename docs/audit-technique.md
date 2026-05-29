@@ -556,9 +556,10 @@ Cela impose des contraintes importantes :
 - Conséquence : **aucun coup ConnectFour ne fonctionne via l'API REST**.
 - Fix nécessaire : adapter `GameServiceImpl.playMove` pour interpréter les positions de gravité ConnectFour.
 
-**BUG-3 (NON CORRIGÉ) — JpaGameDao : currentPlayerId corrompu après rechargement**
+**BUG-3 (NON CORRIGÉ) — JpaGameDao : currentPlayerId corrompu après rechargement (Taquin)**
 - Après sauvegarde puis rechargement via `createGameWithIds`, le `currentPlayerId` change (UUID aléatoire au lieu du joueur original).
 - L'ID du jeu lui-même peut aussi changer.
 - Conséquence : les coups échouent en 403 (le joueur original n'est plus reconnu).
-- Cause probable : `createGameWithIds` du moteur ne préserve pas l'ordre/identité des playerIds.
-- Impact : **les jeux ConnectFour et Taquin sont inutilisables après persistance JPA**.
+- Cause : `createGameWithIds` lève `InconsistentGameDefinitionException` → fallback sur `factory.createGame()` qui génère un nouvel ID et de nouveaux playerIds.
+- Impact : **Taquin est inutilisable après persistance JPA** (création OK, relecture → ID/playerIds différents).
+- ConnectFour n'est pas affecté par BUG-3 (sa reconstruction réussit).
