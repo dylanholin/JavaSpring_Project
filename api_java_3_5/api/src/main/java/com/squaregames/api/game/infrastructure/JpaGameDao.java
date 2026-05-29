@@ -7,10 +7,13 @@ import com.squaregames.api.game.domain.GameTokenEntity;
 import fr.le_campus_numerique.square_games.engine.CellPosition;
 import fr.le_campus_numerique.square_games.engine.Game;
 import fr.le_campus_numerique.square_games.engine.GameFactory;
+import fr.le_campus_numerique.square_games.engine.InconsistentGameDefinitionException;
 import fr.le_campus_numerique.square_games.engine.Token;
+import fr.le_campus_numerique.square_games.engine.TokenPosition;
 import fr.le_campus_numerique.square_games.engine.tictactoe.TicTacToeGameFactory;
 import fr.le_campus_numerique.square_games.engine.connectfour.ConnectFourGameFactory;
 import fr.le_campus_numerique.square_games.engine.taquin.TaquinGameFactory;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
 
 import java.util.*;
@@ -19,9 +22,10 @@ import java.util.*;
  * Implémentation JPA du DAO utilisant Spring Data.
  * S'appuie sur GameEntityRepository pour la persistance.
  *
- * ⚠️ Limitation : le moteur de jeu ne permet pas de reconstruire un Game
- * complet depuis la base. Cette implémentation stocke les métadonnées.
+ * Reconstruit l'état complet d'une partie (playerIds + positions des tokens)
+ * via {@link GameFactory#createGameWithIds} du moteur square-games-engine.
  */
+@Primary
 @Repository
 public class JpaGameDao implements GameDao {
 
@@ -72,7 +76,7 @@ public class JpaGameDao implements GameDao {
 
     /**
      * Convertit une entité JPA vers un objet Game du moteur.
-     * Crée un nouveau jeu avec la factory — l'état précédent est perdu.
+     * Reconstruit l'état complet (playerIds + positions des tokens).
      */
     private Game convertToGame(GameEntity entity) {
         GameFactory factory = factories.get(entity.factoryId);
@@ -80,8 +84,43 @@ public class JpaGameDao implements GameDao {
             return null;
         }
 
-        // Crée un nouveau jeu (l'état précédent est perdu — limitation du moteur)
-        return factory.createGame(entity.playerCount, entity.boardSize);
+        List<UUID> playerIds = new ArrayList<>();
+        if (entity.playerIds != null && !entity.playerIds.isEmpty()) {
+            for (String pid : entity.playerIds.split(",")) {
+                playerIds.add(UUID.fromString(pid.trim()));
+            }
+        } else {
+            for (int i = 0; i < entity.playerCount; i++) {
+                playerIds.add(UUID.randomUUID());
+            }
+        }
+
+        List<TokenPosition<UUID>> onBoardTokens = new ArrayList<>();
+        List<TokenPosition<UUID>> removedTokens = new ArrayList<>();
+
+        for (GameTokenEntity tokenEntity : entity.tokens) {
+            UUID ownerId = tokenEntity.ownerId != null ? UUID.fromString(tokenEntity.ownerId) : null;
+            int x = tokenEntity.xPosition != null ? tokenEntity.xPosition : -1;
+            int y = tokenEntity.yPosition != null ? tokenEntity.yPosition : -1;
+            TokenPosition<UUID> tp = new TokenPosition<>(ownerId, tokenEntity.tokenName, x, y);
+            if (tokenEntity.isRemoved) {
+                removedTokens.add(tp);
+            } else if (tokenEntity.isOnBoard) {
+                onBoardTokens.add(tp);
+            }
+        }
+
+        try {
+            return factory.createGameWithIds(
+                UUID.fromString(entity.id),
+                entity.boardSize,
+                playerIds,
+                onBoardTokens,
+                removedTokens
+            );
+        } catch (InconsistentGameDefinitionException e) {
+            return factory.createGame(entity.playerCount, entity.boardSize);
+        }
     }
 
     /**
@@ -125,6 +164,17 @@ public class JpaGameDao implements GameDao {
             tokenEntity.ownerId = token.getOwnerId().map(Object::toString).orElse(null);
             tokenEntity.isOnBoard = false;
             tokenEntity.isRemoved = false;
+            entity.tokens.add(tokenEntity);
+        }
+
+        // Tokens retirés
+        for (Token token : game.getRemovedTokens()) {
+            GameTokenEntity tokenEntity = new GameTokenEntity();
+            tokenEntity.game = entity;
+            tokenEntity.tokenName = token.getName();
+            tokenEntity.ownerId = token.getOwnerId().map(Object::toString).orElse(null);
+            tokenEntity.isOnBoard = false;
+            tokenEntity.isRemoved = true;
             entity.tokens.add(tokenEntity);
         }
 

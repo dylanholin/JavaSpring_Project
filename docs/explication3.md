@@ -344,12 +344,9 @@ Game game = jdbcTemplate.queryForObject(sql, params, (rs, rowNum) -> mapRowToGam
 
 ### ⚠️ Limitation importante
 
-Le moteur de jeu (`square-games-engine`) ne permet pas de reconstruire un `Game` depuis une base de données relationnelle. Les jeux sont des objets complexes avec un état interne (tokens, positions) qui ne peut pas être facilement sérialisé/désérialisé en SQL.
+Le moteur de jeu (`square-games-engine`) ne permet pas de reconstruire un `Game` depuis les seules métadonnées stockées par JDBC. Les jeux sont des objets complexes avec un état interne (tokens, positions) qui ne peut pas être facilement sérialisé/désérialisé en SQL.
 
-**Conséquence** : `JdbcGameDao` stocke les métadonnées (id, factory_id, board_size, status) mais ne peut pas restaurer l'état complet d'une partie. Pour une vraie persistance avec ce moteur, il faudrait :
-- Sérialisation JSON du Game complet
-- Ou modifier le moteur pour exposer plus d'informations
-- Ou utiliser JPA avec des entités complètes
+**Conséquence** : `JdbcGameDao` stocke les métadonnées (id, factory_id, board_size, status) mais ne peut pas restaurer l'état complet d'une partie. Cette limitation est résolue avec **JPA** (section 3.4) via `GameFactory.createGameWithIds`.
 
 ### Accès à la console H2
 
@@ -459,40 +456,35 @@ public interface GameEntityRepository extends JpaRepository<GameEntity, String> 
 
 **4. Implémentation `JpaGameDao`** (`game/infrastructure/JpaGameDao.java`) :
 ```java
+@Primary
 @Repository
 public class JpaGameDao implements GameDao {
 
     private final GameEntityRepository repository;
+    private final Map<String, GameFactory> factories = new HashMap<>();
 
     public JpaGameDao(GameEntityRepository repository) {
         this.repository = repository;
+        factories.put("tictactoe", new TicTacToeGameFactory());
+        factories.put("connectfour", new ConnectFourGameFactory());
+        factories.put("taquin", new TaquinGameFactory());
     }
 
-    @Override
-    public Collection<Game> findAll() {
-        List<Game> games = new ArrayList<>();
-        for (GameEntity entity : repository.findAll()) {
-            games.add(convertToGame(entity));
-        }
-        return games;
+    // ... findAll, findById, upsert, delete, findByPlayerId
+
+    private Game convertToGame(GameEntity entity) {
+        // Reconstruit l'état complet via createGameWithIds
+        // 1. Extrait les playerIds depuis entity.playerIds
+        // 2. Extrait les onBoardTokens et removedTokens depuis entity.tokens
+        // 3. Appelle factory.createGameWithIds(id, boardSize, playerIds, onBoardTokens, removedTokens)
     }
 
-    @Override
-    public Optional<Game> findById(UUID gameId) {
-        Optional<GameEntity> entity = repository.findById(gameId.toString());
-        return entity.map(this::convertToGame);
-    }
-
-    @Override
-    public Game upsert(Game game) {
-        GameEntity entity = convertToEntity(game);
-        repository.save(entity);  // Insert ou Update automatique
-        return game;
-    }
-
-    @Override
-    public void delete(UUID gameId) {
-        repository.deleteById(gameId.toString());
+    private GameEntity convertToEntity(Game game) {
+        // Sauvegarde l'état complet :
+        // - playerIds (concaténés avec virgule)
+        // - tokens sur le plateau (isOnBoard=true, avec position)
+        // - tokens restants (isOnBoard=false, isRemoved=false)
+        // - tokens retirés (isOnBoard=false, isRemoved=true)
     }
 }
 ```
@@ -507,9 +499,16 @@ public class JpaGameDao implements GameDao {
 | **Cascade** | SQL manuel | `CascadeType.ALL` |
 | **Productivité** | Verbose | Rapide |
 
-### Limitations connues
+### ✅ Reconstruction complète de l'état
 
-Le même problème que JDBC : le moteur de jeu ne permet pas de reconstruire un `Game` complet depuis la base. JPA stocke les métadonnées mais ne peut pas restaurer l'état des tokens après redémarrage.
+Contrairement à JDBC, **JPA permet de restaurer l'état complet d'une partie après redémarrage** grâce à la méthode `GameFactory.createGameWithIds` du moteur.
+
+**Comment ça fonctionne** :
+1. `convertToEntity` sauvegarde les `playerIds`, les tokens sur le plateau (`isOnBoard`), les tokens restants, et les tokens retirés (`isRemoved`) avec leurs positions
+2. `convertToGame` utilise `factory.createGameWithIds(gameId, boardSize, playerIds, onBoardTokens, removedTokens)` pour reconstruire le jeu à l'identique
+3. Si la reconstruction échoue (`InconsistentGameDefinitionException`), on retombe sur `factory.createGame()` (jeu vierge)
+
+**Clé : `GameServiceImpl.playMove` appelle `gameDao.upsert(game)` après chaque coup** pour persister l'état mis à jour. Sans cet appel, les modifications en mémoire seraient perdues avec JPA (contrairement à `InMemoryGameDao` où l'objet est stocké par référence).
 
 **Annotations JPA clés utilisées** :
 - `@Entity`, `@Table` : mapping classe ↔ table
@@ -533,8 +532,9 @@ Le même problème que JDBC : le moteur de jeu ne permet pas de reconstruire un 
 
 **1. Création du profil H2** (`application-h2.properties`) :
 ```properties
-# Profil H2 : Base de données en mémoire (développement/tests)
-spring.datasource.url=jdbc:h2:mem:squaregames
+# Profil H2 : Base de données fichier (développement)
+# Les données survivent au redémarrage de l'application.
+spring.datasource.url=jdbc:h2:file:./data/squaregames
 spring.datasource.driver-class-name=org.h2.Driver
 spring.datasource.username=sa
 spring.datasource.password=
@@ -547,7 +547,12 @@ spring.jpa.show-sql=true
 # Console H2 activée
 spring.h2.console.enabled=true
 spring.h2.console.path=/h2-console
+
+# Pas de schema.sql — Hibernate gère le DDL automatiquement
+spring.sql.init.mode=never
 ```
+
+> 📌 **Mode fichier vs mémoire** : `jdbc:h2:file:./data/squaregames` stocke les données dans le dossier `data/` du projet. Les parties survivent au redémarrage. Pour les tests, on utilise H2 en mémoire (`jdbc:h2:mem:testdb`) avec `ddl-auto=create-drop`.
 
 **2. Création du profil MySQL** (`application-mysql.properties`) :
 ```properties
@@ -594,9 +599,9 @@ spring.profiles.active=h2
 
 | Environnement | Profil | Base de données | Console H2 | DDL |
 |---------------|--------|-----------------|------------|-----|
-| Développement | `h2` | H2 en mémoire | Activée | `update` |
+| Développement | `h2` | H2 fichier (`./data/squaregames`) | Activée | `update` |
 | Production | `mysql` | MySQL/PgSQL | Désactivée | `validate` |
-| Tests | `h2` | H2 embarquée | Activée | `create-drop` |
+| Tests | (aucun) | H2 mémoire (`testdb`) | Désactivée | `create-drop` |
 
 **Séparation des responsabilités** :
 - `application.properties` : configuration commune + profil actif
@@ -607,7 +612,9 @@ spring.profiles.active=h2
 
 ## Tests JPA — JpaGameDaoTest
 
-**Objectif** : valider spécifiquement `JpaGameDao` en dehors du Golden Master principal (qui utilise `InMemoryGameDao` via `@Primary`).
+**Objectif** : valider spécifiquement `JpaGameDao` avec `@DataJpaTest`.
+
+> 📌 `JpaGameDao` est maintenant l'implémentation `@Primary` — le Golden Master (`GameControllerIntegrationTest`) utilise également JPA.
 
 **Fichier** : `game/infrastructure/JpaGameDaoTest.java`
 
@@ -637,7 +644,7 @@ class JpaGameDaoTest {
 - `shouldDeleteGame` : suppression effective
 - `shouldPersistPlayerIdsInDatabase` : vérification directe en base que `player_ids` est bien stocké
 
-**Limitation documentée dans les tests** : `convertToGame` recrée un jeu vierge via la factory (contrainte du moteur). Les tests vérifient les données via `GameEntityRepository` directement lorsque l'id exact est nécessaire.
+**Reconstruction complète** : `convertToGame` utilise `factory.createGameWithIds` pour restaurer l'état complet (playerIds + positions des tokens). Les tests vérifient les données via `GameEntityRepository` directement lorsque l'id exact est nécessaire.
 
 ### Bug corrigé lors de l'écriture des tests
 
@@ -666,4 +673,8 @@ Ce bug était **invisible dans les tests d'intégration existants** car ceux-ci 
 - Implémentation `JpaGameDao` avec Spring Data JPA
 - Entités JPA `GameEntity` et `GameTokenEntity`
 - `playerIds` persistés dans `GameEntity` (colonne `player_ids`)
+- `JpaGameDao` est `@Primary` — l'implémentation JPA est active par défaut
+- `GameServiceImpl.playMove` appelle `gameDao.upsert(game)` après chaque coup pour persister l'état
+- H2 en mode fichier (`jdbc:h2:file:./data/squaregames`) — les parties survivent au redémarrage
 - Tests `JpaGameDaoTest` validant la couche JPA directement
+- Tests Golden Master (`GameControllerIntegrationTest`) utilisent JPA avec H2 mémoire

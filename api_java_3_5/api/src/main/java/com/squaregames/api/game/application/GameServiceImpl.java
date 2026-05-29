@@ -103,6 +103,7 @@ public class GameServiceImpl implements GameService {
         } catch (InvalidPositionException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
+        gameDao.upsert(game);
         return toDto(game);
     }
 

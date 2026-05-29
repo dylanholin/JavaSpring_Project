@@ -6,12 +6,13 @@ CREATE TABLE IF NOT EXISTS games (
     factory_id VARCHAR(50) NOT NULL,
     board_size INT NOT NULL,
     player_count INT NOT NULL,
+    player_ids VARCHAR(1000),
     status VARCHAR(20) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Table pour stocker les positions des tokens (optionnel pour l'instant)
+-- Table pour stocker les positions des tokens
 CREATE TABLE IF NOT EXISTS game_tokens (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     game_id VARCHAR(36) NOT NULL,
@@ -20,6 +21,7 @@ CREATE TABLE IF NOT EXISTS game_tokens (
     x_position INT,
     y_position INT,
     is_on_board BOOLEAN DEFAULT FALSE,
+    is_removed BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
 );
 
