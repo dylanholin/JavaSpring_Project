@@ -484,3 +484,44 @@ Cela impose des contraintes importantes :
 | `PlaceholderResolutionException` dans les tests | Création de `src/test/resources/application.properties` | Tests |
 | `squaregames.mv.db` pas dans `.gitignore` | Ajout de `data/` | `.gitignore` |
 | user-api en H2 mémoire (P1) | Passage en mode fichier `jdbc:h2:file:./data/userdb` | `user-api/application.properties` |
+| Plugins non testés | Ajout de `GamePluginTest` (12 tests unitaires) | `GamePluginTest.java` |
+| Tests user-api cassés par H2 fichier | Création de `user-api/src/test/resources/application.properties` (H2 mémoire) | Tests user-api |
+
+---
+
+## Code obsolète / pédagogique
+
+### JdbcGameDao — obsolète, conservé pour valeur pédagogique
+
+**Fichier** : `api_java_3_5/api/src/main/java/com/squaregames/api/game/infrastructure/JdbcGameDao.java`
+
+**Statut** : `@Repository` actif mais **jamais utilisé** car `JpaGameDao` est `@Primary`.
+
+**Limitations majeures** :
+- `mapRowToGame` crée un jeu **vierge** via `factory.createGame(playerCount, boardSize)` — l'état précédent (tokens, positions) est perdu
+- `findByPlayerId` retourne `findAll()` sans filtrage — les playerIds ne sont pas stockés dans le schéma JDBC
+- Pas de persistance des tokens (seules les métadonnées sont en base)
+
+**Pourquoi le garder** :
+- C'est le livrable de l'itération 3.3 (apprentissage JDBC avec SQL explicite)
+- Montre la progression : InMemory → JDBC → JPA
+- Sert de comparaison pédagogique pour comprendre les avantages de JPA
+
+**Recommandation** : Ne pas supprimer, mais ajouter un commentaire `@Deprecated` pour indiquer qu'il ne doit plus être utilisé en production.
+
+### InMemoryGameDao — utile pour le développement rapide
+
+**Fichier** : `api_java_3_5/api/src/main/java/com/squaregames/api/game/infrastructure/InMemoryGameDao.java`
+
+**Statut** : `@Repository` actif mais **pas @Primary**.
+
+**Avantages** :
+- Stockage par référence (l'objet Game est le même en mémoire) — pas de conversion nécessaire
+- Rapide pour le développement et le debugging sans base de données
+- `findByPlayerId` fonctionne correctement (filtrage sur les playerIds du Game)
+
+**Inconvénients** :
+- Données perdues au redémarrage
+- Pas de persistance
+
+**Recommandation** : Garder — utile comme DAO de fallback pour les tests de développement rapide.

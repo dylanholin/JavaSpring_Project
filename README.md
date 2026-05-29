@@ -180,7 +180,7 @@ Identifiants : user `sa`, password vide.
 ## Lancer les tests
 
 ```bash
-# Tests de l'app de jeux (34 tests)
+# Tests de l'app de jeux (46 tests)
 cd api_java_3_5/api
 ./mvnw test
 
@@ -191,13 +191,14 @@ cd user-api
 
 ### Ce que couvrent les tests
 
-**`api_java_3_5/api` — 34 tests**
+**`api_java_3_5/api` — 46 tests**
 
 | Fichier | Type | Ce qu'il teste |
 |---------|------|----------------|
 | `GameControllerIntegrationTest` | Intégration | CRUD parties, mouvements, 403/404/400, `currentPlayerId == X-UserId`, partie complète jusqu'à `TERMINATED` |
 | `UserValidationContractTest` | Contrat (WireMock) | Comportement de `api` selon les réponses de `user-api` (200 true/false, 503, 404) |
 | `GameServiceImplTest` | Unitaire (Mockito) | Logique du service isolée du DAO et des plugins |
+| `GamePluginTest` | Unitaire (Mockito) | Plugins TicTacToe, ConnectFour, Taquin : gameType, createGame, factory, noms localisés |
 | `JpaGameDaoTest` | JPA (`@DataJpaTest`) | Persistance JPA : CRUD, playerIds, reconstruction via `createGameWithIds` |
 | `GameCatalogControllerTest` | Intégration | Catalogue de jeux disponibles |
 
