@@ -39,3 +39,6 @@ Thumbs.db
 ### Logs ###
 *.log
 logs/
+
+### Base de données H2 locale (persistance fichier) ###
+data/

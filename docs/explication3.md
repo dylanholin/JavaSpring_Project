@@ -554,6 +554,16 @@ spring.sql.init.mode=never
 
 > 📌 **Mode fichier vs mémoire** : `jdbc:h2:file:./data/squaregames` stocke les données dans le dossier `data/` du projet. Les parties survivent au redémarrage. Pour les tests, on utilise H2 en mémoire (`jdbc:h2:mem:testdb`) avec `ddl-auto=create-drop`.
 
+### Fichier de base de données H2
+
+L'URL `jdbc:h2:file:./data/squaregames` crée un fichier **`data/squaregames.mv.db`** sur le disque. C'est ce fichier binaire qui contient toutes les tables, parties et tokens persistés. Il est l'équivalent d'un fichier `.sqlite` — la base de données entière tient dans un seul fichier.
+
+**Pourquoi il est dans `.gitignore`** :
+- C'est une base de données **locale de développement** — chaque développeur a la sienne
+- Hibernate la recrée automatiquement au premier démarrage (`ddl-auto=update`)
+- Les fichiers binaires de DB ne doivent jamais être commités dans Git (gros, inutiles, conflits potentiels)
+- Le dossier `data/` est ajouté à `.gitignore` pour empêcher son push sur GitHub
+
 **2. Création du profil MySQL** (`application-mysql.properties`) :
 ```properties
 # Profil MySQL : Base de données MySQL (production)
