@@ -525,3 +525,40 @@ Cela impose des contraintes importantes :
 - Pas de persistance
 
 **Recommandation** : Garder — utile comme DAO de fallback pour les tests de développement rapide.
+
+---
+
+## Analyse de couverture de tests
+
+**Total** : 64 tests (54 api + 10 user-api), estimation ~60% de couverture.
+
+| # | Item | Fait ? | Toujours utile ? | Priorité | Justification |
+|---|------|--------|-----------------|----------|---------------|
+| 1 | JdbcGameDao | ❌ | ❌ Obsolète | — | Code mort, `@Primary` sur JpaGameDao. Valeur uniquement pédagogique. |
+| 2 | InMemoryGameDao | ❌ | ❌ Trop simple | — | HashMap basique, risque de bug quasi nul. Plus `@Primary`. |
+| 3 | Plugins | ✅ | Fait | — | `GamePluginTest` : 12 tests unitaires (gameType, createGame, factory, noms). |
+| 4 | GameCatalogImpl | ❌ | 🟡 Déjà couvert | Basse | `GameCatalogControllerTest` teste l'endpoint. Le service est simple. |
+| 5 | Entités JPA | ❌ | ❌ Pas de logique | — | Champs publics, pas de méthodes. Testées indirectement via `JpaGameDaoTest`. |
+| 6 | RestUserValidator | ❌ | ❌ Déjà couvert | — | `UserValidationContractTest` (WireMock) teste les 4 scénarios. |
+| 7 | **ConnectFour / Taquin intégration** | ✅ | Fait | — | 8 tests d'intégration. Ont révélé 3 bugs (voir ci-dessous). |
+| 8 | Persistance redémarrage | ❌ | 🟡 Complexe | Basse | Testé manuellement. Automatisation difficile (arrêt/redémarrage dans le test). |
+
+### Bugs découverts par les tests ConnectFour / Taquin
+
+**BUG-1 (CORRIGÉ) — Clés de factories incorrectes dans JpaGameDao et JdbcGameDao**
+- Les factories étaient enregistrées avec les clés `"connectfour"` et `"taquin"`, mais le moteur retourne `"connect4"` et `"15 puzzle"` comme `factoryId`.
+- Conséquence : `findById` et `findAll` retournaient `null` pour ces jeux → 404 sur `/moves` et `/games/{id}`.
+- Correction : alignement des clés sur les `factoryId` du moteur (`"connect4"`, `"15 puzzle"`).
+
+**BUG-2 (NON CORRIGÉ) — ConnectFour : positions invalides dans allowedMoves**
+- Le moteur ConnectFour retourne des `allowedMoves` avec `col=-1` (marqueur de gravité : la ligne exacte sera calculée par le moteur).
+- L'API envoie ces positions telles quelles au `moveTo()`, qui les rejette.
+- Conséquence : **aucun coup ConnectFour ne fonctionne via l'API REST**.
+- Fix nécessaire : adapter `GameServiceImpl.playMove` pour interpréter les positions de gravité ConnectFour.
+
+**BUG-3 (NON CORRIGÉ) — JpaGameDao : currentPlayerId corrompu après rechargement**
+- Après sauvegarde puis rechargement via `createGameWithIds`, le `currentPlayerId` change (UUID aléatoire au lieu du joueur original).
+- L'ID du jeu lui-même peut aussi changer.
+- Conséquence : les coups échouent en 403 (le joueur original n'est plus reconnu).
+- Cause probable : `createGameWithIds` du moteur ne préserve pas l'ordre/identité des playerIds.
+- Impact : **les jeux ConnectFour et Taquin sont inutilisables après persistance JPA**.

@@ -37,8 +37,8 @@ public class JdbcGameDao implements GameDao {
         this.jdbcTemplate = jdbcTemplate;
         // Initialiser les factories
         factories.put("tictactoe", new TicTacToeGameFactory());
-        factories.put("connectfour", new ConnectFourGameFactory());
-        factories.put("taquin", new TaquinGameFactory());
+        factories.put("connect4", new ConnectFourGameFactory());
+        factories.put("15 puzzle", new TaquinGameFactory());
     }
 
     @Override

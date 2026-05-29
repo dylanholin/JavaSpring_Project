@@ -102,6 +102,9 @@ public class GameServiceImpl implements GameService {
             token.moveTo(new CellPosition(move.row(), move.col()));
         } catch (InvalidPositionException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        } catch (RuntimeException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Coup invalide : " + e.getMessage());
         }
         gameDao.upsert(game);
         return toDto(game);

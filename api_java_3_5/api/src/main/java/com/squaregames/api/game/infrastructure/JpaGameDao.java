@@ -37,8 +37,8 @@ public class JpaGameDao implements GameDao {
     public JpaGameDao(GameEntityRepository repository) {
         this.repository = repository;
         factories.put("tictactoe", new TicTacToeGameFactory());
-        factories.put("connectfour", new ConnectFourGameFactory());
-        factories.put("taquin", new TaquinGameFactory());
+        factories.put("connect4", new ConnectFourGameFactory());
+        factories.put("15 puzzle", new TaquinGameFactory());
     }
 
     @Override
