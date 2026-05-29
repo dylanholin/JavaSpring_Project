@@ -44,7 +44,7 @@ cd api_java_3_5/api
 
 > ⚠️ **Les deux applications doivent être démarrées** avant de commencer (voir section Démarrage).
 >
-> **Persistance** : les parties de jeux survivent au redémarrage (H2 fichier). En revanche, **user-api utilise H2 en mémoire** : les utilisateurs sont perdus au redémarrage et doivent être recréés.
+> **Persistance** : les parties de jeux ET les utilisateurs survivent au redémarrage (H2 fichier pour les deux applications).
 
 ---
 
@@ -169,11 +169,11 @@ Permet de visualiser les données en base directement dans le navigateur.
 | Application | URL | JDBC URL | Persistance |
 |-------------|-----|----------|-------------|
 | App de jeux | http://localhost:8080/h2-console | `jdbc:h2:file:./data/squaregames` | ✅ Fichier (survit au redémarrage) |
-| user-api | http://localhost:8081/h2-console | `jdbc:h2:mem:userdb` | ❌ Mémoire (perdu au redémarrage) |
+| user-api | http://localhost:8081/h2-console | `jdbc:h2:file:./data/userdb` | ✅ Fichier (survit au redémarrage) |
 
 Identifiants : user `sa`, password vide.
 
-> 📌 L'app de jeux stocke ses données dans `api_java_3_5/api/data/squaregames.mv.db` (fichier H2). Ce dossier est dans `.gitignore` et est recréé automatiquement par Hibernate au premier démarrage.
+> 📌 Les deux applications stockent leurs données dans des fichiers H2 (`api_java_3_5/api/data/squaregames.mv.db` et `user-api/data/userdb.mv.db`). Ces dossiers sont dans `.gitignore` et sont recréés automatiquement par Hibernate au premier démarrage.
 
 ---
 

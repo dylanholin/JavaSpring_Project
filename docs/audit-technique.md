@@ -89,23 +89,24 @@ Ces tests protègent contre les régressions lors des refactorings (DAO, JPA, et
 
 ### 🔴 Priorité haute — Problèmes fonctionnels
 
-#### P1. user-api en H2 mémoire — incohérence de persistance
+#### P1. ✅ CORRIGÉ — user-api en H2 fichier
 
 **Fichier** : `/home/user/Documents/JavaSpring_Project/user-api/src/main/resources/application.properties`
 
-**Problème** : L'app de jeux persiste ses données (H2 fichier), mais user-api utilise H2 en mémoire.
-Après un redémarrage, les parties existent toujours mais les utilisateurs n'existent plus.
-Quand un joueur essaie de jouer sur une partie restaurée → `403 Forbidden` car user-api ne reconnaît plus l'utilisateur.
+**Problème (corrigé)** : L'app de jeux persiste ses données (H2 fichier), mais user-api utilisait H2 en mémoire.
+Après un redémarrage, les parties existaient toujours mais les utilisateurs n'existaient plus.
+Quand un joueur essayait de jouer sur une partie restaurée → `403 Forbidden` car user-api ne reconnaissait plus l'utilisateur.
 
-**Impact** : La persistance des jeux est **partiellement inutile** sans persistance des utilisateurs.
-
-**Solution** : Passer user-api en H2 fichier aussi, comme l'app de jeux :
+**Correction appliquée** (29/05/2026) :
 ```properties
+# Avant :
+spring.datasource.url=jdbc:h2:mem:userdb
+# Après :
 spring.datasource.url=jdbc:h2:file:./data/userdb
-spring.jpa.hibernate.ddl-auto=update
 ```
 
-**Complexité** : Faible — copier la config de l'app de jeux.
+Le dossier `user-api/data/` a été ajouté au `.gitignore` (racine) pour ne pas commiter la base.
+Fichier H2 créé : `user-api/data/userdb.mv.db` — les utilisateurs survivent maintenant au redémarrage.
 
 ---
 
@@ -365,7 +366,7 @@ Game → GameDto si la complexité augmente.
 
 | # | Problème | Priorité | Complexité | Impact |
 |---|---------|----------|------------|--------|
-| P1 | user-api en H2 mémoire | 🔴 Haute | Faible | Persistance des jeux partiellement inutile |
+| P1 | user-api en H2 fichier | ✅ Corrigé | Faible | Persistance des jeux partiellement inutile |
 | P2 | findByPlayerId charge tout | 🔴 Haute | Faible | Performance dégradée avec le temps |
 | P3 | Pas de @Transactional | 🔴 Haute | Faible | Risque d'incohérence de données |
 | P4 | Entités JPA champs publics | 🟡 Moyenne | Moyenne | Pas d'encapsulation, difficile à refactorer |
@@ -382,7 +383,7 @@ Game → GameDto si la complexité augmente.
 
 ## Ordre suggéré pour les améliorations
 
-1. **P1** — user-api en H2 fichier (5 min, impact maximal sur la cohérence)
+1. ~~**P1** — user-api en H2 fichier~~ ✅ Corrigé (29/05/2026)
 2. **P3** — Ajouter `@Transactional` (5 min, sécurité des données)
 3. **P2** — Requête JPQL pour findByPlayerId (15 min, performance)
 4. **P6** — Factories depuis les plugins (15 min, évolutivité)
@@ -482,3 +483,4 @@ Cela impose des contraintes importantes :
 | `InMemoryGameDao` était `@Primary` | `@Primary` déplacé sur `JpaGameDao` | Les deux DAOs |
 | `PlaceholderResolutionException` dans les tests | Création de `src/test/resources/application.properties` | Tests |
 | `squaregames.mv.db` pas dans `.gitignore` | Ajout de `data/` | `.gitignore` |
+| user-api en H2 mémoire (P1) | Passage en mode fichier `jdbc:h2:file:./data/userdb` | `user-api/application.properties` |

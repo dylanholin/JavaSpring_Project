@@ -43,3 +43,7 @@ out/
 # OS files
 .DS_Store
 Thumbs.db
+
+# H2 databases (fichiers de persistance locale - recréés automatiquement)
+api_java_3_5/api/data/
+user-api/data/
