@@ -32,6 +32,7 @@ class GamePluginTest {
     private TaquinPlugin taquinPlugin;
 
     @BeforeEach
+    @SuppressWarnings("null")
     void setUp() {
         ticTacToePlugin = new TicTacToePlugin(messageSource);
         connectFourPlugin = new ConnectFourPlugin(messageSource);
@@ -65,6 +66,7 @@ class GamePluginTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void ticTacToe_shouldReturnLocalizedName() {
         when(messageSource.getMessage(eq("game.tictactoe.name"), any(), any(Locale.class)))
                 .thenReturn("Morpion");
@@ -98,6 +100,7 @@ class GamePluginTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void connectFour_shouldReturnLocalizedName() {
         when(messageSource.getMessage(eq("game.connectfour.name"), any(), any(Locale.class)))
                 .thenReturn("Puissance 4");
@@ -131,6 +134,7 @@ class GamePluginTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void taquin_shouldReturnLocalizedName() {
         when(messageSource.getMessage(eq("game.taquin.name"), any(), any(Locale.class)))
                 .thenReturn("Taquin");
