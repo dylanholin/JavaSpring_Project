@@ -43,7 +43,8 @@ cd api_java_3_5/api
 ## Jouer une partie — Guide complet
 
 > ⚠️ **Les deux applications doivent être démarrées** avant de commencer (voir section Démarrage).
-> ⚠️ **La base de données est en mémoire** : toutes les données sont perdues à chaque redémarrage. Il faut recréer les utilisateurs à chaque fois.
+>
+> **Persistance** : les parties de jeux survivent au redémarrage (H2 fichier). En revanche, **user-api utilise H2 en mémoire** : les utilisateurs sont perdus au redémarrage et doivent être recréés.
 
 ---
 
@@ -165,21 +166,21 @@ curl http://localhost:8080/games \
 
 Permet de visualiser les données en base directement dans le navigateur.
 
-| Application | URL | JDBC URL |
-|-------------|-----|----------|
-| App de jeux | http://localhost:8080/h2-console | `jdbc:h2:mem:squaregames` |
-| user-api | http://localhost:8081/h2-console | `jdbc:h2:mem:userdb` |
+| Application | URL | JDBC URL | Persistance |
+|-------------|-----|----------|-------------|
+| App de jeux | http://localhost:8080/h2-console | `jdbc:h2:file:./data/squaregames` | ✅ Fichier (survit au redémarrage) |
+| user-api | http://localhost:8081/h2-console | `jdbc:h2:mem:userdb` | ❌ Mémoire (perdu au redémarrage) |
 
 Identifiants : user `sa`, password vide.
 
-> ⚠️ Les données sont perdues à chaque redémarrage (base en mémoire).
+> 📌 L'app de jeux stocke ses données dans `api_java_3_5/api/data/squaregames.mv.db` (fichier H2). Ce dossier est dans `.gitignore` et est recréé automatiquement par Hibernate au premier démarrage.
 
 ---
 
 ## Lancer les tests
 
 ```bash
-# Tests de l'app de jeux (27 tests)
+# Tests de l'app de jeux (34 tests)
 cd api_java_3_5/api
 ./mvnw test
 
@@ -190,13 +191,14 @@ cd user-api
 
 ### Ce que couvrent les tests
 
-**`api_java_3_5/api` — 27 tests**
+**`api_java_3_5/api` — 34 tests**
 
 | Fichier | Type | Ce qu'il teste |
 |---------|------|----------------|
 | `GameControllerIntegrationTest` | Intégration | CRUD parties, mouvements, 403/404/400, `currentPlayerId == X-UserId`, partie complète jusqu'à `TERMINATED` |
 | `UserValidationContractTest` | Contrat (WireMock) | Comportement de `api` selon les réponses de `user-api` (200 true/false, 503, 404) |
 | `GameServiceImplTest` | Unitaire (Mockito) | Logique du service isolée du DAO et des plugins |
+| `JpaGameDaoTest` | JPA (`@DataJpaTest`) | Persistance JPA : CRUD, playerIds, reconstruction via `createGameWithIds` |
 | `GameCatalogControllerTest` | Intégration | Catalogue de jeux disponibles |
 
 **`user-api` — 10 tests**
@@ -237,9 +239,10 @@ JavaSpring_Project/
 │   │       │   ├── GameEntity.java
 │   │       │   ├── GameEntityRepository.java
 │   │       │   └── GameTokenEntity.java
-│   │       └── infrastructure/       ← Adapters techniques (JPA, clients externes)
-│   │           ├── JdbcGameDao.java
-│   │           ├── JpaGameDao.java
+│   │       └── infrastructure/       ← Adapters techniques (DAOs, clients externes)
+│   │           ├── InMemoryGameDao.java  ← DAO en mémoire (ne survit pas au redémarrage)
+│   │           ├── JdbcGameDao.java      ← DAO JDBC (SQL explicite, limitation d'état)
+│   │           ├── JpaGameDao.java       ← DAO JPA (@Primary, persistance complète)
 │   │           └── RestUserValidator.java
 │   ├── src/test/java/...              ← Tests unitaires et d'intégration
 │   ├── README.md
@@ -264,11 +267,11 @@ JavaSpring_Project/
 │   └── pom.xml
 ├── cda-java-spring-game-engine-main/  ← Moteur de jeu externe (bibliothèque)
 ├── AGENTS.md                          ← Règles de travail pour l'IA
-├── explication.md                     ← Documentation pédagogique itération 1
-├── explication2.md                    ← Documentation pédagogique itération 2
-├── explication3.md                    ← Documentation pédagogique itération 3
-├── explication4.md                    ← Documentation pédagogique itération 4
-├── explication5.md                    ← Documentation pédagogique itération 5
-├── suivi.md                           ← Suivi de progression
+├── docs/                              ← Documentation pédagogique
+│   ├── explication.md                  ← Itération 1
+│   ├── explication2.md                 ← Itération 2
+│   ├── explication3.md                 ← Itération 3 (persistance)
+│   ├── explication4.md                 ← Itération 4 (utilisateurs & sécurité)
+│   └── suivi.md                        ← Suivi de progression
 └── README.md                          ← Ce fichier
 ```
