@@ -56,8 +56,9 @@ public class JpaGameDao implements GameDao {
     @Override
     @SuppressWarnings("null")
     public Optional<Game> findById(UUID gameId) {
-        Optional<GameEntity> entity = repository.findById(gameId.toString());
-        return entity.map(this::convertToGame).filter(Objects::nonNull);
+        return repository.findById(gameId.toString())
+                .map(this::convertToGame)
+                .filter(game -> game != null && java.util.Objects.equals(game.getId(), gameId));
     }
 
     @Override
@@ -111,16 +112,54 @@ public class JpaGameDao implements GameDao {
         }
 
         try {
+            List<TokenPosition<UUID>> normalizedOnBoard = onBoardTokens;
+            if ("connect4".equals(entity.factoryId)) {
+                normalizedOnBoard = ConnectFourStateAdapter.normalizePositions(onBoardTokens);
+                // Le moteur exige que le joueur avec le plus de tokens soit à l'index 1
+                // (assert counts[1] - counts[0] ∈ [0,1])
+                playerIds = reorderPlayersForConnectFour(playerIds, normalizedOnBoard);
+            }
             return factory.createGameWithIds(
                 UUID.fromString(entity.id),
                 entity.boardSize,
                 playerIds,
-                onBoardTokens,
+                normalizedOnBoard,
                 removedTokens
             );
         } catch (InconsistentGameDefinitionException e) {
-            return factory.createGame(entity.playerCount, entity.boardSize);
+            Game fallback = factory.createGame(entity.playerCount, entity.boardSize);
+            UUID currentPlayer = entity.currentPlayerId != null ? UUID.fromString(entity.currentPlayerId) : fallback.getCurrentPlayerId();
+            return new GameStateWrapper(fallback, UUID.fromString(entity.id), currentPlayer);
+        } catch (Throwable e) {
+            System.err.println("JpaGameDao.convertToGame fallback for " + entity.factoryId
+                    + " id=" + entity.id + " error=" + e.getClass().getName() + " " + e.getMessage());
+            Game fallback = factory.createGame(entity.playerCount, entity.boardSize);
+            UUID currentPlayer = entity.currentPlayerId != null ? UUID.fromString(entity.currentPlayerId) : fallback.getCurrentPlayerId();
+            return new GameStateWrapper(fallback, UUID.fromString(entity.id), currentPlayer);
         }
+    }
+
+    /**
+     * Réorganise playerIds pour ConnectFour : le joueur avec le plus de tokens onBoard
+     * doit être à l'index 1 (car le moteur vérifie counts[1] - counts[0] ∈ [0,1]).
+     */
+    private List<UUID> reorderPlayersForConnectFour(List<UUID> playerIds, List<TokenPosition<UUID>> onBoard) {
+        if (playerIds.size() != 2 || onBoard.isEmpty()) {
+            return playerIds;
+        }
+        Map<UUID, Integer> counts = new HashMap<>();
+        for (TokenPosition<UUID> tp : onBoard) {
+            counts.merge(tp.owner(), 1, Integer::sum);
+        }
+        UUID p0 = playerIds.get(0);
+        UUID p1 = playerIds.get(1);
+        int count0 = counts.getOrDefault(p0, 0);
+        int count1 = counts.getOrDefault(p1, 0);
+        if (count0 > count1) {
+            // p0 a plus de tokens : le mettre à l'index 1
+            return List.of(p1, p0);
+        }
+        return playerIds;
     }
 
     /**
@@ -133,6 +172,8 @@ public class JpaGameDao implements GameDao {
         entity.boardSize = game.getBoardSize();
         entity.playerCount = game.getPlayerIds().size();
         entity.status = game.getStatus().name();
+        entity.currentPlayerId = game.getCurrentPlayerId() != null ? game.getCurrentPlayerId().toString() : null;
+        // Conserver l'ordre original des joueurs (important pour l'alternance des tours)
         entity.playerIds = game.getPlayerIds().stream()
                 .map(Object::toString)
                 .collect(java.util.stream.Collectors.joining(","));

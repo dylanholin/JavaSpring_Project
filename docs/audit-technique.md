@@ -550,16 +550,22 @@ Cela impose des contraintes importantes :
 - Conséquence : `findById` et `findAll` retournaient `null` pour ces jeux → 404 sur `/moves` et `/games/{id}`.
 - Correction : alignement des clés sur les `factoryId` du moteur (`"connect4"`, `"15 puzzle"`).
 
-**BUG-2 (NON CORRIGÉ) — ConnectFour : positions invalides dans allowedMoves**
-- Le moteur ConnectFour retourne des `allowedMoves` avec `col=-1` (marqueur de gravité : la ligne exacte sera calculée par le moteur).
-- L'API envoie ces positions telles quelles au `moveTo()`, qui les rejette.
-- Conséquence : **aucun coup ConnectFour ne fonctionne via l'API REST**.
-- Fix nécessaire : adapter `GameServiceImpl.playMove` pour interpréter les positions de gravité ConnectFour.
+**BUG-2 (CORRIGÉ) — ConnectFour : reconstruction JPA incompatible avec createGameWithIds**
+- Le moteur ConnectFour attend que les positions `y` soient `0, 1, 2…` consécutifs par colonne (indices à partir du bas).
+- `JpaGameDao` stockait les positions réelles (gravité), ce qui provoquait `InconsistentGameDefinitionException` lors de la reconstruction.
+- Par ailleurs, le moteur vérifie `counts[1] - counts[0] ∈ [0,1]`, ce qui exige que le joueur avec le plus de tokens soit à l'index 1 dans `playerIds`.
+- **Corrections apportées** :
+  - `ConnectFourStateAdapter` : normalise les positions y pour le moteur (regroupement par colonne, tri descendant, renumérotation).
+  - `reorderPlayersForConnectFour` : réorganise `playerIds` pour respecter l'assertion du moteur.
+  - `GameStateWrapper` : préserve l'`id` et le `currentPlayerId` originaux quand un fallback est nécessaire.
+- Le marqueur de gravité `CellPosition(col, -1)` est bien interprété par le moteur. **ConnectFour est jouable via l'API REST**.
 
-**BUG-3 (NON CORRIGÉ) — JpaGameDao : currentPlayerId corrompu après rechargement (Taquin)**
-- Après sauvegarde puis rechargement via `createGameWithIds`, le `currentPlayerId` change (UUID aléatoire au lieu du joueur original).
-- L'ID du jeu lui-même peut aussi changer.
-- Conséquence : les coups échouent en 403 (le joueur original n'est plus reconnu).
-- Cause : `createGameWithIds` lève `InconsistentGameDefinitionException` → fallback sur `factory.createGame()` qui génère un nouvel ID et de nouveaux playerIds.
-- Impact : **Taquin est inutilisable après persistance JPA** (création OK, relecture → ID/playerIds différents).
-- ConnectFour n'est pas affecté par BUG-3 (sa reconstruction réussit).
+**BUG-3 (CORRIGÉ) — JpaGameDao : currentPlayerId et ID corrompus après rechargement**
+- Après sauvegarde puis rechargement via `createGameWithIds`, le `currentPlayerId` et/ou l'`id` du jeu pouvaient changer (nouveaux UUID aléatoires).
+- Cause : `createGameWithIds` peut lever `InconsistentGameDefinitionException` (jeux à gravité) ou produire un `currentPlayerId` incohérent.
+- Le fallback `factory.createGame()` générait alors un jeu vierge avec un nouvel ID.
+- **Corrections apportées** :
+  - `GameStateWrapper` : wrapper délégué qui redéfinit `getId()` et `getCurrentPlayerId()` avec les valeurs stockées en base.
+  - Stockage de `currentPlayerId` dans `GameEntity` pour le préserver après reconstruction.
+  - Suppression du tri des `playerIds` dans `convertToEntity` (tri lexicographique qui cassait l'alternance TicTacToe).
+- Impact : **TicTacToe, ConnectFour et Taquin sont utilisables après persistance JPA**.

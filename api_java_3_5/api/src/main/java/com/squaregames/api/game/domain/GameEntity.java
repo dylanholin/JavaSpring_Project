@@ -32,6 +32,9 @@ public class GameEntity {
     @Column(nullable = false, length = 20)
     public String status;
 
+    @Column(name = "current_player_id", length = 36)
+    public String currentPlayerId;
+
     @Column(name = "created_at")
     public Instant createdAt;
 

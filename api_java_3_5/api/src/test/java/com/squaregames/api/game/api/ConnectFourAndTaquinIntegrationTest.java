@@ -16,6 +16,7 @@ import org.springframework.http.*;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -82,6 +83,21 @@ class ConnectFourAndTaquinIntegrationTest {
     }
 
     @Test
+    void connectFour_shouldPlayMove() {
+        GameDto game = createGame("connect4", 2, 7, PLAYER_A);
+        UUID gameId = game.id();
+
+        TokenMovesDto firstToken = getFirstAvailableTokenInfo(gameId);
+        PositionDto target = firstToken.allowedMoves().get(0);
+
+        ResponseEntity<String> response = playMoveRaw(gameId, PLAYER_A,
+                firstToken.tokenName(), target.row(), target.col());
+        assertThat(response.getStatusCode())
+                .as("Le coup ConnectFour doit réussir")
+                .isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
     void connectFour_shouldReturn403WhenWrongPlayerPlays() {
         GameDto game = createGame("connect4", 2, 7, PLAYER_A);
         UUID gameId = game.id();
@@ -96,19 +112,33 @@ class ConnectFourAndTaquinIntegrationTest {
     }
 
     @Test
-    void connectFour_shouldBeReadableAfterCreation() {
+    void connectFour_shouldPlayMultipleMoves() {
         GameDto game = createGame("connect4", 2, 7, PLAYER_A);
         UUID gameId = game.id();
 
-        // Vérifier que la partie est accessible et a des tokens
-        Collection<TokenMovesDto> moves = getMoves(gameId);
-        assertThat(moves).as("ConnectFour doit avoir des tokens").isNotEmpty();
+        // Jouer 6 coups dans différentes colonnes (le currentPlayerId change après chaque coup)
+        int[] desiredCols = {0, 1, 2, 3, 4, 5};
+        for (int i = 0; i < desiredCols.length; i++) {
+            GameDto state = getGame(gameId);
+            if ("TERMINATED".equals(state.status())) break;
 
-        // BUG-2 : les coups ConnectFour échouent car allowedMoves contient col=-1
-        // On vérifie juste que la partie est lisible après création
-        GameDto state = getGame(gameId);
-        assertThat(state.status()).isEqualTo("ONGOING");
-        assertThat(state.id()).isEqualTo(gameId);
+            String currentPlayer = state.currentPlayerId().toString();
+            TokenMovesDto token = getFirstAvailableTokenInfo(gameId);
+            int desiredCol = desiredCols[i];
+            PositionDto target = token.allowedMoves().stream()
+                    .filter(p -> p.row() == desiredCol)
+                    .findFirst()
+                    .orElse(token.allowedMoves().get(0));
+
+            ResponseEntity<String> resp = playMoveRaw(gameId, currentPlayer,
+                    token.tokenName(), target.row(), target.col());
+            assertThat(resp.getStatusCode())
+                    .as("Coup %d (col %d) par %s doit réussir".formatted(i + 1, desiredCol, currentPlayer))
+                    .isEqualTo(HttpStatus.OK);
+        }
+
+        GameDto finalState = getGame(gameId);
+        assertThat(finalState.status()).isIn("ONGOING", "TERMINATED");
     }
 
     // ========================================================================
@@ -189,12 +219,18 @@ class ConnectFourAndTaquinIntegrationTest {
     }
 
     private Collection<TokenMovesDto> getMoves(UUID gameId) {
-        ResponseEntity<Collection<TokenMovesDto>> response = restTemplate.exchange(
-                "/games/" + gameId + "/moves",
-                HttpMethod.GET, null,
-                new ParameterizedTypeReference<>() {});
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        return java.util.Objects.requireNonNull(response.getBody());
+        ResponseEntity<String> raw = restTemplate.exchange(
+                "/games/" + gameId + "/moves", HttpMethod.GET, null, String.class);
+        if (raw.getStatusCode() != HttpStatus.OK) {
+            throw new AssertionError("GET /moves returned " + raw.getStatusCode() + ": " + raw.getBody());
+        }
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper().readValue(
+                    raw.getBody(),
+                    new com.fasterxml.jackson.core.type.TypeReference<List<TokenMovesDto>>() {});
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur parsing moves: " + raw.getBody(), e);
+        }
     }
 
     private TokenMovesDto getFirstAvailableTokenInfo(UUID gameId) {

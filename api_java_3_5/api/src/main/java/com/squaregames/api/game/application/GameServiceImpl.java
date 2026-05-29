@@ -57,27 +57,41 @@ public class GameServiceImpl implements GameService {
     public GameDto getGame(UUID gameId) {
         Game game = gameDao.findById(gameId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Partie introuvable : " + gameId));
-        return toDto(game);
+        try {
+            return toDto(game);
+        } catch (Exception e) {
+            System.err.println("GameServiceImpl.getGame toDto ERROR: " + e.getClass().getName() + " " + e.getMessage());
+            e.printStackTrace();
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erreur lors de la conversion du jeu", e);
+        }
     }
 
     @Override
     public List<TokenMovesDto> getPossibleMoves(UUID gameId) {
-        Game game = findGame(gameId);
-        return Stream.concat(
-                game.getBoard().values().stream(),
-                game.getRemainingTokens().stream()
-        ).map(token -> {
-            CellPosition pos = token.getPosition();
-            List<PositionDto> moves = token.getAllowedMoves().stream()
-                    .map(p -> new PositionDto(p.x(), p.y()))
-                    .toList();
-            return new TokenMovesDto(
-                    token.getName(),
-                    pos != null ? pos.x() : -1,
-                    pos != null ? pos.y() : -1,
-                    moves
-            );
-        }).toList();
+        try {
+            Game game = findGame(gameId);
+            return Stream.concat(
+                    game.getBoard().values().stream(),
+                    game.getRemainingTokens().stream()
+            ).map(token -> {
+                CellPosition pos = token.getPosition();
+                List<PositionDto> moves = token.getAllowedMoves().stream()
+                        .map(p -> new PositionDto(p.x(), p.y()))
+                        .toList();
+                return new TokenMovesDto(
+                        token.getName(),
+                        pos != null ? pos.x() : -1,
+                        pos != null ? pos.y() : -1,
+                        moves
+                );
+            }).toList();
+        } catch (ResponseStatusException e) {
+            throw e;
+        } catch (Throwable e) {
+            System.err.println("getPossibleMoves ERROR: " + e.getClass().getName() + " " + e.getMessage());
+            e.printStackTrace();
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erreur calcul coups", e);
+        }
     }
 
     @Override
