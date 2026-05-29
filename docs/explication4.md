@@ -136,7 +136,7 @@ La dépendance `spring-boot-starter-validation` active `@NotBlank`, `@Email`, `@
 server.port=8081
 spring.application.name=user-api
 
-spring.datasource.url=jdbc:h2:mem:userdb
+spring.datasource.url=jdbc:h2:file:./data/userdb
 spring.datasource.driver-class-name=org.h2.Driver
 spring.datasource.username=sa
 spring.datasource.password=

@@ -180,7 +180,7 @@ Identifiants : user `sa`, password vide.
 ## Lancer les tests
 
 ```bash
-# Tests de l'app de jeux (54 tests)
+# Tests de l'app de jeux (60 tests)
 cd api_java_3_5/api
 ./mvnw test
 
@@ -191,7 +191,7 @@ cd user-api
 
 ### Ce que couvrent les tests
 
-**`api_java_3_5/api` — 54 tests**
+**`api_java_3_5/api` — 60 tests**
 
 | Fichier | Type | Ce qu'il teste |
 |---------|------|----------------|
@@ -201,6 +201,7 @@ cd user-api
 | `GameServiceImplTest` | Unitaire (Mockito) | Logique du service isolée du DAO et des plugins |
 | `GamePluginTest` | Unitaire (Mockito) | Plugins TicTacToe, ConnectFour, Taquin : gameType, createGame, factory, noms localisés |
 | `JpaGameDaoTest` | JPA (`@DataJpaTest`) | Persistance JPA : CRUD, playerIds, reconstruction via `createGameWithIds` |
+| `ConnectFourMoveTest` | Unitaire | Reconstruction ConnectFour après coup, normalisation positions, allowedMoves |
 | `GameCatalogControllerTest` | Intégration | Catalogue de jeux disponibles |
 
 **`user-api` — 10 tests**
@@ -242,9 +243,11 @@ JavaSpring_Project/
 │   │       │   ├── GameEntityRepository.java
 │   │       │   └── GameTokenEntity.java
 │   │       └── infrastructure/       ← Adapters techniques (DAOs, clients externes)
-│   │           ├── InMemoryGameDao.java  ← DAO en mémoire (ne survit pas au redémarrage)
-│   │           ├── JdbcGameDao.java      ← DAO JDBC (SQL explicite, limitation d'état)
-│   │           ├── JpaGameDao.java       ← DAO JPA (@Primary, persistance complète)
+│   │           ├── InMemoryGameDao.java      ← DAO en mémoire (ne survit pas au redémarrage)
+│   │           ├── JdbcGameDao.java          ← DAO JDBC (SQL explicite, limitation d'état)
+│   │           ├── JpaGameDao.java           ← DAO JPA (@Primary, persistance complète)
+│   │           ├── ConnectFourStateAdapter.java ← Normalise les positions ConnectFour pour reconstruction
+│   │           ├── GameStateWrapper.java       ← Préserve id et currentPlayerId en fallback
 │   │           └── RestUserValidator.java
 │   ├── src/test/java/...              ← Tests unitaires et d'intégration
 │   ├── README.md

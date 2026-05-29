@@ -506,7 +506,9 @@ Contrairement à JDBC, **JPA permet de restaurer l'état complet d'une partie ap
 **Comment ça fonctionne** :
 1. `convertToEntity` sauvegarde les `playerIds`, les tokens sur le plateau (`isOnBoard`), les tokens restants, et les tokens retirés (`isRemoved`) avec leurs positions
 2. `convertToGame` utilise `factory.createGameWithIds(gameId, boardSize, playerIds, onBoardTokens, removedTokens)` pour reconstruire le jeu à l'identique
-3. Si la reconstruction échoue (`InconsistentGameDefinitionException`), on retombe sur `factory.createGame()` (jeu vierge)
+3. Pour ConnectFour, les positions `y` sont **normalisées** par `ConnectFourStateAdapter` (renumérotation `0,1,2…` par colonne depuis le bas) car le moteur exige cette convention
+4. Pour ConnectFour, l'ordre des `playerIds` est réorganisé par `reorderPlayersForConnectFour` (le joueur avec le plus de tokens doit être à l'index 1)
+5. Si la reconstruction échoue (`InconsistentGameDefinitionException`), `GameStateWrapper` préserve l'`id` et le `currentPlayerId` originaux sur un jeu fallback vierge — évitant les 404 et 403
 
 **Clé : `GameServiceImpl.playMove` appelle `gameDao.upsert(game)` après chaque coup** pour persister l'état mis à jour. Sans cet appel, les modifications en mémoire seraient perdues avec JPA (contrairement à `InMemoryGameDao` où l'objet est stocké par référence).
 
@@ -672,7 +674,7 @@ tokenEntity.ownerId = token.getOwnerId() != null ? token.getOwnerId().toString()
 tokenEntity.ownerId = token.getOwnerId().map(Object::toString).orElse(null);
 ```
 
-Ce bug était **invisible dans les tests d'intégration existants** car ceux-ci utilisent `InMemoryGameDao` (`@Primary`) — `JpaGameDao` n'était jamais sollicité.
+Ce bug a été découvert en activant `JpaGameDao` comme implémentation `@Primary` et en écrivant `JpaGameDaoTest`.
 
 ---
 
@@ -683,8 +685,12 @@ Ce bug était **invisible dans les tests d'intégration existants** car ceux-ci 
 - Implémentation `JpaGameDao` avec Spring Data JPA
 - Entités JPA `GameEntity` et `GameTokenEntity`
 - `playerIds` persistés dans `GameEntity` (colonne `player_ids`)
+- `currentPlayerId` persisté dans `GameEntity` (colonne `current_player_id`)
 - `JpaGameDao` est `@Primary` — l'implémentation JPA est active par défaut
+- `ConnectFourStateAdapter` — normalise les positions ConnectFour pour reconstruction
+- `GameStateWrapper` — préserve `id` et `currentPlayerId` sur fallback
 - `GameServiceImpl.playMove` appelle `gameDao.upsert(game)` après chaque coup pour persister l'état
 - H2 en mode fichier (`jdbc:h2:file:./data/squaregames`) — les parties survivent au redémarrage
 - Tests `JpaGameDaoTest` validant la couche JPA directement
+- Tests `ConnectFourMoveTest` validant la reconstruction ConnectFour après coup
 - Tests Golden Master (`GameControllerIntegrationTest`) utilisent JPA avec H2 mémoire

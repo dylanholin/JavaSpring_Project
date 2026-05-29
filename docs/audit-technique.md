@@ -530,7 +530,7 @@ Cela impose des contraintes importantes :
 
 ## Analyse de couverture de tests
 
-**Total** : 64 tests (54 api + 10 user-api), estimation ~60% de couverture.
+**Total** : 70 tests (60 api + 10 user-api), estimation ~65% de couverture.
 
 | # | Item | Fait ? | Toujours utile ? | Priorité | Justification |
 |---|------|--------|-----------------|----------|---------------|
@@ -541,7 +541,8 @@ Cela impose des contraintes importantes :
 | 5 | Entités JPA | ❌ | ❌ Pas de logique | — | Champs publics, pas de méthodes. Testées indirectement via `JpaGameDaoTest`. |
 | 6 | RestUserValidator | ❌ | ❌ Déjà couvert | — | `UserValidationContractTest` (WireMock) teste les 4 scénarios. |
 | 7 | **ConnectFour / Taquin intégration** | ✅ | Fait | — | 8 tests d'intégration. Ont révélé 3 bugs (voir ci-dessous). |
-| 8 | Persistance redémarrage | ❌ | 🟡 Complexe | Basse | Testé manuellement. Automatisation difficile (arrêt/redémarrage dans le test). |
+| 8 | ConnectFour reconstruction | ✅ | Fait | — | `ConnectFourMoveTest` : 5 tests unitaires (reconstruction, normalisation, allowedMoves). |
+| 9 | Persistance redémarrage | ❌ | 🟡 Complexe | Basse | Testé manuellement. Automatisation difficile (arrêt/redémarrage dans le test). |
 
 ### Bugs découverts par les tests ConnectFour / Taquin
 
