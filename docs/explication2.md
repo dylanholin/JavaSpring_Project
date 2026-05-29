@@ -464,6 +464,35 @@ public interface GamePlugin {
 
 Chaque jeu a son plugin : `TicTacToePlugin`, `ConnectFourPlugin`, `TaquinPlugin`…
 
+### Pourquoi une interface commune et des plugins séparés ?
+
+Tu pourrais te demander : « Pourquoi ne pas mettre toute la logique directement dans `GameServiceImpl` ? »  
+Ou bien : « Pourquoi un `TicTacToePlugin` et un `ConnectFourPlugin` au lieu d'une seule grande classe `GameManager` ? »
+
+Voici pourquoi le **pattern Plugin** est utilisé :
+
+**1. Uniformisation malgré des règles différentes**
+- Le moteur fournit des factories différentes (`TicTacToeGameFactory`, `ConnectFourGameFactory`…).
+- Chaque jeu a ses propres règles, sa taille de plateau, son nombre de joueurs.
+- L'interface `GamePlugin` cache ces différences : pour `GameServiceImpl`, tous les jeux se ressemblent.
+
+**2. Le service reste générique**
+- `GameServiceImpl` manipule une `List<GamePlugin>` — il n'a pas besoin de savoir quel jeu est derrière.
+- Quand tu crées une partie, le service cherche juste le plugin dont `getGameType()` correspond au `gameType` envoyé par le client.
+- Pas de `if/else` ou de `switch` géant dans le service.
+
+**3. Extensibilité sans modifier le code existant**
+- Si demain tu veux ajouter un jeu (échecs, dames…), tu crées juste une nouvelle classe `ChessPlugin implements GamePlugin`.
+- Tu n'as **pas besoin de toucher** à `GameServiceImpl`, ni au contrôleur, ni aux tests existants.
+- Spring découvre automatiquement le nouveau plugin grâce à `@Component`.
+
+**4. Séparation des responsabilités**
+- Chaque plugin connaît **sa** factory, **ses** paramètres par défaut (`@Value`) et **son** nom traduit (`MessageSource`).
+- Le service ne s'occupe que de l'orchestration (création, récupération, jouer un coup).
+- Le contrôleur ne s'occupe que du protocole HTTP.
+
+**En résumé** : l'interface `GamePlugin` est le « contrat » que tous les jeux respectent. Les plugins sont les « adaptateurs » entre ton application et le moteur de jeu. C'est propre, facile à tester et prêt à accueillir de nouveaux jeux.
+
 ### Injection automatique de tous les plugins
 
 > 📁 `.../game/application/GameServiceImpl.java` ✅
