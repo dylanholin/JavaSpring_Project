@@ -10,12 +10,9 @@ Application de jeux de plateau multi-joueurs développée en Java 21 avec Spring
 - [Configuration](#configuration)
 - [Base de données](#base-de-données)
 - [Jouer une partie : guide complet](#jouer-une-partie--guide-complet)
-- [Exemples d'API](#exemples-dapi)
-- [Codes HTTP](#codes-http)
 - [Console H2 (débogage)](#console-h2-débogage)
 - [Lancer les tests](#lancer-les-tests)
 - [Déploiement (suggestion)](#déploiement-suggestion)
-- [Aide / Contact](#aide--contact)
 - [Structure du projet](#structure-du-projet)
 
 ## Architecture
@@ -220,61 +217,6 @@ curl http://localhost:8080/games \
 
 ---
 
-## Exemples d'API
-
-### Créer un utilisateur
-
-```
-POST /users
-Host: localhost:8081
-Content-Type: application/json
-
-{"name":"Bob","email":"bob@example.com"}
-
-→ 201 Created
-{"id":"a1b2c3d4-...","name":"Bob","email":"bob@example.com","createdAt":"2026-05-26T10:00:00Z"}
-```
-
-### Créer une partie de ConnectFour
-
-```
-POST /games
-Host: localhost:8080
-Content-Type: application/json
-X-UserId: a1b2c3d4-...
-
-{"gameType":"connect4","playerCount":2,"boardSize":7}
-
-→ 201 Created
-{"id":"e5f6g7h8-...","gameType":"connect4","playerCount":2,"boardSize":7,"status":"ONGOING","currentPlayerId":"a1b2c3d4-..."}
-```
-
-### Lister les parties d'un joueur
-
-```
-GET /games
-Host: localhost:8080
-X-UserId: a1b2c3d4-...
-
-→ 200 OK
-[{"id":"e5f6g7h8-...","gameType":"connect4","status":"ONGOING",...}]
-```
-
----
-
-## Codes HTTP
-
-| Code | Signification |
-|------|---------------|
-| `200` | Succès |
-| `201` | Ressource créée |
-| `400` | Header `X-UserId` manquant ou corps invalide |
-| `403` | Utilisateur inconnu ou ce n'est pas ton tour |
-| `404` | Partie ou utilisateur introuvable |
-| `409` | Conflit (ex : email déjà utilisé) |
-
----
-
 ## Console H2 (débogage)
 
 Permet de visualiser les données en base directement dans le navigateur.
@@ -288,19 +230,21 @@ Permet de visualiser les données en base directement dans le navigateur.
 
 ## Lancer les tests
 
+Le projet compte **70 tests** au total (60 pour l'app de jeux, 10 pour user-api).
+
 ```bash
-# Tests de l'app de jeux
+# Tests de l'app de jeux (60 tests)
 cd api_java_3_5/api
 ./mvnw test
 
-# Tests de user-api
+# Tests de user-api (10 tests)
 cd user-api
 ./mvnw test
 ```
 
 ### Ce que couvrent les tests
 
-**`api_java_3_5/api`**
+**`api_java_3_5/api` — 60 tests**
 
 | Fichier | Type | Ce qu'il teste |
 |---------|------|----------------|
@@ -313,7 +257,7 @@ cd user-api
 | `ConnectFourMoveTest` | Unitaire | Reconstruction ConnectFour après coup, normalisation positions, allowedMoves |
 | `GameCatalogControllerTest` | Intégration | Catalogue de jeux disponibles |
 
-**`user-api`**
+**`user-api` — 10 tests**
 
 | Fichier | Type | Ce qu'il teste |
 |---------|------|----------------|
@@ -351,14 +295,9 @@ services:
 
 ---
 
-## Aide / Contact
-
-- **Issues** : ouvrir une issue sur [GitHub Issues](https://github.com/dylanholin/JavaSpring_Project/issues) pour signaler un bug ou proposer une amélioration
-- **Documentation pédagogique** : consulter le dossier `docs/` pour les explications détaillées de chaque itération
-
----
-
 ## Structure du projet
+
+> 📌 Documentation pédagogique : consulter le dossier `docs/` pour les explications détaillées de chaque itération.
 
 ```
 JavaSpring_Project/
