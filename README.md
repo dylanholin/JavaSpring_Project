@@ -2,6 +2,13 @@
 
 Application de jeux de plateau multi-joueurs développée en Java 21 avec Spring Boot 3.5, dans le cadre d'un apprentissage progressif des bonnes pratiques back-end.
 
+[![Java](https://img.shields.io/badge/Java-21-007396?logo=openjdk)](https://openjdk.org/)
+[![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5-6DB33F?logo=springboot)](https://spring.io/projects/spring-boot)
+[![Maven](https://img.shields.io/badge/Maven-3.9-C71A36?logo=apachemaven)](https://maven.apache.org/)
+[![H2](https://img.shields.io/badge/Database-H2-0078D4)](https://h2database.com/)
+[![Tests](https://img.shields.io/badge/tests-70%20passing-brightgreen)](docs/start_project.md)
+[![Microservices](https://img.shields.io/badge/architecture-microservices-blue)](README.md#architecture)
+
 ## Sommaire
 
 - [Architecture](#architecture)
@@ -52,7 +59,7 @@ La configuration se fait via `application.properties` avec des profils Spring. A
 | `game.connectfour.default-player-count` | `2` | Nombre de joueurs par défaut pour ConnectFour |
 | `game.connectfour.default-board-size` | `7` | Taille de grille par défaut pour ConnectFour |
 | `game.taquin.default-player-count` | `1` | Nombre de joueurs par défaut pour le Taquin |
-| `game.taquin.default-board-size` | `4` | Taille de grille par défaut pour le Taquin |
+| `game.taquin.default-board-size` | `4` | Taille de grille par défaut pour le Taquin (grille 4x4) |
 
 ### Application utilisateurs (`user-api/src/main/resources/application.properties`)
 
