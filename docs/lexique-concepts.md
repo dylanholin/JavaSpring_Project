@@ -495,11 +495,10 @@ game.tictactoe.default-player-count=2
 game.tictactoe.default-board-size=3
 game.connectfour.default-player-count=2
 game.connectfour.default-board-size=7
-
-# URL du service utilisateurs
 game.taquin.default-player-count=1
 game.taquin.default-board-size=4
 
+# URL du service utilisateurs
 user.service.url=http://localhost:8081
 ```
 
@@ -630,14 +629,6 @@ public class RestUserValidator implements UserValidator {
     }
 }
 ```
-
-### Codes HTTP traduits
-| user-api répond | api traduit en |
-|-----------------|----------------|
-| 200 + `true` | continue (créer la partie) |
-| 200 + `false` | 403 FORBIDDEN |
-| 404 Not Found | 403 FORBIDDEN |
-| Service down | 403 FORBIDDEN |
 
 ---
 

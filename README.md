@@ -1,6 +1,6 @@
 # SquareGames
 
-Application de jeux de plateau multi-joueurs développée en Java 21 avec Spring Boot 3.5, dans le cadre d'un apprentissage progressif des bonnes pratiques back-end.
+Application de jeux de plateau (TicTacToe, ConnectFour, Taquin) développée en Java 21 avec Spring Boot 3.5, dans le cadre d'un apprentissage progressif des bonnes pratiques back-end.
 
 [![Java](https://img.shields.io/badge/Java-21-007396?logo=openjdk)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5-6DB33F?logo=springboot)](https://spring.io/projects/spring-boot)
