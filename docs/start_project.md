@@ -149,13 +149,19 @@ cd user-api
 
 ## Windows
 
-### 1. Installer Java 21
+### 1. Installer Java 21+
 
-Télécharger et installer un JDK 21+ (Eclipse Adoptium, Oracle, etc.) depuis [adoptium.net](https://adoptium.net/).
+Télécharger et installer un JDK 21 ou version ultérieure (21, 25, etc.) depuis [adoptium.net](https://adoptium.net/).
 
 ### 2. Configurer JAVA_HOME
 
-Le projet nécessite un JDK (pas un JRE). Vérifie que `JAVA_HOME` pointe vers un JDK :
+Le projet nécessite un JDK (pas un JRE). Vérifie la version utilisée par défaut :
+
+```powershell
+java -version
+```
+
+Si elle affiche une version < 21 (ex: 1.8), ou si `javac -version` est introuvable, configure `JAVA_HOME` :
 
 ```powershell
 echo $env:JAVA_HOME
@@ -168,15 +174,23 @@ Get-ChildItem "C:\Program Files\Eclipse Adoptium" -ErrorAction SilentlyContinue
 Get-ChildItem "C:\Program Files\Java" -ErrorAction SilentlyContinue
 ```
 
-Définis `JAVA_HOME` pour la session PowerShell :
+Définis `JAVA_HOME` et mets à jour le `PATH` pour la session PowerShell :
 
 ```powershell
 $env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21"
+$env:Path = "$env:JAVA_HOME\bin;$env:Path"
 ```
 
 > 📌 Adapte le chemin selon ton installation. Le dossier doit contenir `bin\javac.exe`.
 
-Pour rendre la variable persistante, ajoute-la dans les **variables d'environnement système** de Windows.
+Vérifie que la bonne version est active :
+
+```powershell
+java -version
+javac -version
+```
+
+Pour rendre la variable persistante, ajoute `JAVA_HOME` dans les **variables d'environnement système** de Windows et place `%JAVA_HOME%\bin` au début du `PATH`.
 
 ### 3. Cloner le dépôt
 
