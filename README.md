@@ -2,6 +2,22 @@
 
 Application de jeux de plateau multi-joueurs développée en Java 21 avec Spring Boot 3.5, dans le cadre d'un apprentissage progressif des bonnes pratiques back-end.
 
+## Sommaire
+
+- [Architecture](#architecture)
+- [Prérequis](#prérequis)
+- [Installation et démarrage](#installation-et-démarrage)
+- [Configuration](#configuration)
+- [Base de données](#base-de-données)
+- [Jouer une partie : guide complet](#jouer-une-partie--guide-complet)
+- [Exemples d'API](#exemples-dapi)
+- [Codes HTTP](#codes-http)
+- [Console H2 (débogage)](#console-h2-débogage)
+- [Lancer les tests](#lancer-les-tests)
+- [Déploiement (suggestion)](#déploiement-suggestion)
+- [Aide / Contact](#aide--contact)
+- [Structure du projet](#structure-du-projet)
+
 ## Architecture
 
 Ce projet est composé de **deux applications Spring Boot indépendantes** (architecture microservices) :
@@ -354,30 +370,30 @@ JavaSpring_Project/
 │   │   ├── RandomHeartbeat.java      ← Implémentation aléatoire du capteur
 │   │   └── game/                     ← Feature "jeu" (organisée par couches)
 │   │       ├── api/                  ← Couche REST (contrôleurs + DTO)
-│   │       │   ├── GameController.java
-│   │       │   ├── GameCatalogController.java
+│   │       │   ├── GameController.java          ← CRUD parties + mouvements
+│   │       │   ├── GameCatalogController.java    ← Catalogue des jeux disponibles
 │   │       │   └── dto/
-│   │       │       ├── CatalogEntryDto.java
-│   │       │       ├── GameCreationParams.java
-│   │       │       ├── GameDto.java
-│   │       │       ├── MoveRequest.java
-│   │       │       ├── PositionDto.java
-│   │       │       └── TokenMovesDto.java
+│   │       │       ├── CatalogEntryDto.java      ← Entrée du catalogue (nom, description)
+│   │       │       ├── GameCreationParams.java   ← Paramètres de création d'une partie
+│   │       │       ├── GameDto.java              ← Représentation d'une partie
+│   │       │       ├── MoveRequest.java         ← Requête pour jouer un coup
+│   │       │       ├── PositionDto.java         ← Position (ligne, colonne)
+│   │       │       └── TokenMovesDto.java       ← Coups possibles pour un token
 │   │       ├── application/          ← Couche service + plugins
-│   │       │   ├── GameService.java
-│   │       │   ├── GameServiceImpl.java
-│   │       │   ├── GamePlugin.java
-│   │       │   ├── TicTacToePlugin.java
-│   │       │   ├── ConnectFourPlugin.java
-│   │       │   ├── TaquinPlugin.java
-│   │       │   ├── GameCatalog.java
-│   │       │   ├── GameCatalogImpl.java
-│   │       │   ├── GameDao.java
-│   │       │   └── UserValidator.java
+│   │       │   ├── GameService.java             ← Interface du service métier
+│   │       │   ├── GameServiceImpl.java         ← Implémentation du service
+│   │       │   ├── GamePlugin.java              ← Interface commune des plugins de jeu
+│   │       │   ├── TicTacToePlugin.java         ← Plugin TicTacToe
+│   │       │   ├── ConnectFourPlugin.java       ← Plugin ConnectFour
+│   │       │   ├── TaquinPlugin.java            ← Plugin Taquin (15 puzzle)
+│   │       │   ├── GameCatalog.java             ← Interface du catalogue de jeux
+│   │       │   ├── GameCatalogImpl.java         ← Implémentation du catalogue
+│   │       │   ├── GameDao.java                ← Interface du DAO
+│   │       │   └── UserValidator.java          ← Interface de validation utilisateur
 │   │       ├── domain/               ← Modèle métier (entités JPA, repositories)
-│   │       │   ├── GameEntity.java
-│   │       │   ├── GameEntityRepository.java
-│   │       │   └── GameTokenEntity.java
+│   │       │   ├── GameEntity.java              ← Entité JPA d'une partie
+│   │       │   ├── GameEntityRepository.java   ← Repository Spring Data JPA
+│   │       │   └── GameTokenEntity.java         ← Entité JPA d'un token sur le plateau
 │   │       └── infrastructure/       ← Adapters techniques (DAOs, clients externes)
 │   │           ├── InMemoryGameDao.java          ← DAO en mémoire (ne survit pas au redémarrage)
 │   │           ├── JdbcGameDao.java              ← DAO JDBC (SQL explicite, limitation d'état)
@@ -397,23 +413,22 @@ JavaSpring_Project/
 │   │   ├── UserApiApplication.java   ← Classe principale
 │   │   └── user/                     ← Feature "utilisateur"
 │   │       ├── api/                  ← Couche REST
-│   │       │   ├── UserController.java
+│   │       │   ├── UserController.java          ← CRUD utilisateurs + validation
 │   │       │   └── dto/
-│   │       │       ├── UserCreationRequest.java
-│   │       │       └── UserDto.java
+│   │       │       ├── UserCreationRequest.java ← Payload de création d'utilisateur
+│   │       │       └── UserDto.java             ← Représentation d'un utilisateur
 │   │       ├── application/          ← Couche service
-│   │       │   ├── UserService.java
-│   │       │   ├── UserServiceImpl.java
-│   │       │   └── UserDao.java
+│   │       │   ├── UserService.java             ← Interface du service utilisateur
+│   │       │   ├── UserServiceImpl.java         ← Implémentation du service
+│   │       │   └── UserDao.java                ← Interface du DAO utilisateur
 │   │       ├── domain/               ← Modèle métier
-│   │       │   ├── User.java
-│   │       │   └── UserRepository.java
+│   │       │   ├── User.java                    ← Entité métier utilisateur
+│   │       │   └── UserRepository.java         ← Repository Spring Data JPA
 │   │       └── infrastructure/       ← Couche persistance
-│   │           └── JpaUserDao.java
+│   │           └── JpaUserDao.java             ← Implémentation JPA du DAO
 │   ├── src/test/java/...              ← Tests
 │   ├── README.md
 │   └── pom.xml
-├── cda-java-spring-game-engine-main/  ← Moteur de jeu externe (bibliothèque)
 ├── img/                              ← Captures d'écran du projet
 ├── AGENTS.md                          ← Règles de travail pour l'IA
 ├── docs/                              ← Documentation pédagogique
