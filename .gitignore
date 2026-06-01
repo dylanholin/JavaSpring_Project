@@ -47,6 +47,3 @@ Thumbs.db
 # H2 databases (fichiers de persistance locale - recréés automatiquement)
 api_java_3_5/api/data/
 user-api/data/
-
-# Moteur de jeu externe (récupéré via Maven depuis GitHub Packages)
-cda-java-spring-game-engine-main/

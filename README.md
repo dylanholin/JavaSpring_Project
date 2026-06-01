@@ -6,13 +6,10 @@ Application de jeux de plateau multi-joueurs développée en Java 21 avec Spring
 
 - [Architecture](#architecture)
 - [Prérequis](#prérequis)
-- [Installation et démarrage](#installation-et-démarrage)
 - [Configuration](#configuration)
 - [Base de données](#base-de-données)
 - [Jouer une partie : guide complet](#jouer-une-partie--guide-complet)
 - [Console H2 (débogage)](#console-h2-débogage)
-- [Lancer les tests](#lancer-les-tests)
-- [Déploiement (suggestion)](#déploiement-suggestion)
 - [Structure du projet](#structure-du-projet)
 
 ## Architecture
@@ -36,44 +33,7 @@ Communication inter-services : `api` appelle `GET http://localhost:8081/users/{i
 - **Maven** (ou utiliser le wrapper `./mvnw` inclus dans chaque application)
 - Aucune base de données externe nécessaire : H2 embarqué en fichier est utilisé par défaut
 
----
-
-## Installation et démarrage
-
-### 1. Cloner le dépôt
-
-```bash
-git clone https://github.com/dylanholin/JavaSpring_Project.git
-cd JavaSpring_Project
-```
-
-### 2. Démarrer user-api (port 8081)
-
-```bash
-cd user-api
-./mvnw spring-boot:run
-```
-
-### 3. Démarrer l'app de jeux (port 8080)
-
-```bash
-cd api_java_3_5/api
-./mvnw spring-boot:run
-```
-
-> ⚠️ Démarrer **user-api en premier** : l'app de jeux en a besoin pour valider les utilisateurs.
-
-### Exécuter les tests
-
-```bash
-# Tests de l'app de jeux
-cd api_java_3_5/api
-./mvnw test
-
-# Tests de user-api
-cd user-api
-./mvnw test
-```
+> 📌 **Installation et démarrage** : lire impérativement [docs/start_project.md](docs/start_project.md) avant d'utiliser le projet. Les instructions pas-à-pas couvrent Fedora, Ubuntu et Windows (testé sur Fedora Workstation et Windows 11).
 
 ---
 
@@ -123,7 +83,7 @@ Les deux applications utilisent **H2 en mode fichier** par défaut (profil `h2`)
 
 ## Jouer une partie : guide complet
 
-> ⚠️ **Les deux applications doivent être démarrées** avant de commencer (voir section Installation et démarrage).
+> ⚠️ **Les deux applications doivent être démarrées** avant de commencer (voir [docs/start_project.md](docs/start_project.md)).
 >
 > **Persistance** : les parties de jeux et les utilisateurs survivent au redémarrage (H2 fichier pour les deux applications).
 
@@ -228,73 +188,6 @@ Permet de visualiser les données en base directement dans le navigateur.
 
 ---
 
-## Lancer les tests
-
-Le projet compte **70 tests** au total (60 pour l'app de jeux, 10 pour user-api).
-
-```bash
-# Tests de l'app de jeux (60 tests)
-cd api_java_3_5/api
-./mvnw test
-
-# Tests de user-api (10 tests)
-cd user-api
-./mvnw test
-```
-
-### Ce que couvrent les tests
-
-**`api_java_3_5/api` — 60 tests**
-
-| Fichier | Type | Ce qu'il teste |
-|---------|------|----------------|
-| `GameControllerIntegrationTest` | Intégration | CRUD parties, mouvements, 403/404/400, `currentPlayerId == X-UserId`, partie complète jusqu'à `TERMINATED` |
-| `ConnectFourAndTaquinIntegrationTest` | Intégration | Création, `/moves`, 403 pour joueur non autorisé. A révélé 3 bugs (voir `audit-technique.md`) |
-| `UserValidationContractTest` | Contrat (WireMock) | Comportement de `api` selon les réponses de `user-api` (200 true/false, 503, 404) |
-| `GameServiceImplTest` | Unitaire (Mockito) | Logique du service isolée du DAO et des plugins |
-| `GamePluginTest` | Unitaire (Mockito) | Plugins TicTacToe, ConnectFour, Taquin : gameType, createGame, factory, noms localisés |
-| `JpaGameDaoTest` | JPA (`@DataJpaTest`) | Persistance JPA : CRUD, playerIds, reconstruction via `createGameWithIds` |
-| `ConnectFourMoveTest` | Unitaire | Reconstruction ConnectFour après coup, normalisation positions, allowedMoves |
-| `GameCatalogControllerTest` | Intégration | Catalogue de jeux disponibles |
-
-**`user-api` — 10 tests**
-
-| Fichier | Type | Ce qu'il teste |
-|---------|------|----------------|
-| `UserControllerIntegrationTest` | Intégration | CRUD utilisateurs, validation, 409 doublon email, 400 champs invalides |
-
-> 💡 Les tests d'intégration démarrent une vraie application Spring Boot sans mock sur la logique métier : ils détectent les bugs réels (ex : le bug de recherche de token dans `getBoard()` corrigé grâce au test de partie complète).
-
----
-
-## Déploiement (suggestion)
-
-Aucune configuration Docker ou cloud n'est en place actuellement. Voici un exemple de `docker-compose.yml` suggéré pour déployer les deux services :
-
-```yaml
-version: "3.8"
-services:
-  user-api:
-    build: ./user-api
-    ports:
-      - "8081:8081"
-    environment:
-      - SPRING_PROFILES_ACTIVE=h2
-  api:
-    build: ./api_java_3_5/api
-    ports:
-      - "8080:8080"
-    environment:
-      - SPRING_PROFILES_ACTIVE=h2
-      - USER_SERVICE_URL=http://user-api:8081
-    depends_on:
-      - user-api
-```
-
-> ⚠️ Ce fichier est une **suggestion** non testée. Pour la production, utiliser le profil MySQL avec une base de données externe et sécuriser les endpoints.
-
----
-
 ## Structure du projet
 
 > 📌 Documentation pédagogique : consulter le dossier `docs/` pour les explications détaillées de chaque itération.
@@ -368,6 +261,7 @@ JavaSpring_Project/
 │   ├── src/test/java/...              ← Tests
 │   ├── README.md
 │   └── pom.xml
+├── cda-java-spring-game-engine-main/  ← Moteur de jeu (bibliothèque, à installer en local)
 ├── img/                              ← Captures d'écran du projet
 ├── AGENTS.md                          ← Règles de travail pour l'IA
 ├── docs/                              ← Documentation pédagogique
@@ -378,6 +272,7 @@ JavaSpring_Project/
 │   ├── explication5.md                 ← Itération 5 (à venir)
 │   ├── audit-technique.md              ← Audit technique du projet
 │   ├── lexique-concepts.md            ← Lexique des concepts Spring Boot
+│   ├── start_project.md                ← Guide de démarrage (Fedora, Ubuntu, Windows)
 │   └── suivi.md                        ← Suivi de progression
 └── README.md                          ← Ce fichier
 ```
