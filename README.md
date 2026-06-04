@@ -12,6 +12,7 @@ Application de jeux de plateau (TicTacToe, ConnectFour, Taquin) développée en 
 ## Sommaire
 
 - [Architecture](#architecture)
+  - [Organisation interne : architecture hexagonale (Ports & Adapters)](#organisation-interne--architecture-hexagonale-ports--adapters)
 - [Prérequis](#prérequis)
 - [Configuration](#configuration)
 - [Base de données](#base-de-données)
@@ -31,6 +32,46 @@ Ce projet est composé de **deux applications Spring Boot indépendantes** (arch
 Les deux applications communiquent via REST : l'app de jeux appelle user-api pour valider l'identité du joueur (`X-UserId`).
 
 Communication inter-services : `api` appelle `GET http://localhost:8081/users/{id}/valid` via RestClient (Spring Boot 3.2+).
+
+### Organisation interne : architecture hexagonale (Ports & Adapters)
+
+Chaque feature (`game/`, `user/`) n'est **pas** organisée en couches techniques classiques (`controller` / `service` / `dao`), mais selon le rôle de chaque classe dans le sens des dépendances. C'est l'**architecture hexagonale** (aussi appelée *Ports & Adapters* ou *Clean Architecture*).
+
+```
+game/
+├── api/             ← Adapter d'ENTRÉE (REST) : GameController + DTO
+├── application/     ← Cœur métier : services + PORTS (interfaces)
+│   ├── GameService / GameServiceImpl    ← logique métier
+│   ├── GameDao.java                     ← PORT (interface)
+│   ├── UserValidator.java               ← PORT (interface)
+│   └── GamePlugin.java
+├── domain/          ← Entités JPA (modèle persistant)
+└── infrastructure/  ← Adapters de SORTIE (détails techniques)
+    ├── JpaGameDao / JdbcGameDao / InMemoryGameDao  ← implémentent GameDao
+    └── RestUserValidator                            ← implémente UserValidator
+```
+
+**Pourquoi le DAO n'est-il pas regroupé dans un seul package `dao` ?**
+
+Le DAO est volontairement coupé en deux :
+
+- L'**interface** `GameDao` est dans `application/`. C'est un **port** : le métier déclare *ce dont il a besoin* (persister, lire, supprimer une partie), sans connaître la technologie.
+- Les **implémentations** (`JpaGameDao`, `JdbcGameDao`, `InMemoryGameDao`) sont dans `infrastructure/`. Ce sont des **adapters** : des détails techniques interchangeables.
+
+Conséquence : `GameServiceImpl` ne dépend **jamais** de JPA ni de SQL. On a pu passer de `InMemoryGameDao` → `JdbcGameDao` → `JpaGameDao` (itérations 3.2 à 3.4) sans modifier une seule ligne du service. Le choix de l'implémentation active se fait via `@Primary` sur `JpaGameDao`.
+
+**Pourquoi `RestUserValidator` est-il dans `infrastructure/` ?**
+
+Même logique :
+
+- `UserValidator` (interface, dans `application/`) = le métier dit « j'ai besoin de valider un utilisateur ».
+- `RestUserValidator` (dans `infrastructure/`) = le *comment* technique : un appel HTTP sortant via `RestClient`. Tout appel réseau vers un système externe est, par nature, de l'infrastructure. Il est remplaçable (on pourrait écrire un `LocalUserValidator` pour les tests, par exemple).
+
+**Avantages de ce découpage**
+
+- Le cœur métier (`application/`) est testable en isolation : on mocke les ports (`UserValidator`, `GameDao`).
+- Les dépendances pointent toujours **vers le métier**, jamais l'inverse (règle de dépendance de la Clean Architecture).
+- Ajouter un nouveau jeu = ajouter un `GamePlugin`, sans toucher au contrôleur ni au DAO.
 
 ---
 
