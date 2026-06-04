@@ -1,5 +1,7 @@
 package com.squaregames.user.user.api;
 
+import com.squaregames.user.auth.api.LoginRequest;
+import com.squaregames.user.auth.api.LoginResponse;
 import com.squaregames.user.user.api.dto.UserCreationRequest;
 import com.squaregames.user.user.api.dto.UserDto;
 import org.junit.jupiter.api.Test;
@@ -10,7 +12,6 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 
 import java.util.Collection;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,185 +26,209 @@ class UserControllerIntegrationTest {
     @Autowired
     private TestRestTemplate restTemplate;
 
+    private UserDto createUser(String name, String email, String password, String role) {
+        UserCreationRequest request = new UserCreationRequest(name, email, password, role);
+        ResponseEntity<UserDto> response = restTemplate.postForEntity("/users", request, UserDto.class);
+        assertThat(response.getStatusCode())
+                .as("La création d'un utilisateur doit retourner 201 CREATED")
+                .isEqualTo(HttpStatus.CREATED);
+        return java.util.Objects.requireNonNull(response.getBody());
+    }
+
+    private String loginAndGetToken(String email, String password) {
+        LoginRequest loginRequest = new LoginRequest(email, password);
+        ResponseEntity<LoginResponse> response = restTemplate.postForEntity(
+                "/auth/login", loginRequest, LoginResponse.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        return java.util.Objects.requireNonNull(response.getBody()).token();
+    }
+
+    private HttpHeaders authHeaders(String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + token);
+        return headers;
+    }
+
     @Test
     void shouldCreateUser() {
-        // Given
-        UserCreationRequest request = new UserCreationRequest("Alice", "alice@test.com");
+        UserCreationRequest request = new UserCreationRequest("Alice", "alice@test.com", "password123", null);
 
-        // When
         ResponseEntity<UserDto> response = restTemplate.postForEntity("/users", request, UserDto.class);
 
-        // Then
         assertThat(response.getStatusCode())
                 .as("La création d'un utilisateur doit retourner 201 CREATED")
                 .isEqualTo(HttpStatus.CREATED);
         UserDto body = java.util.Objects.requireNonNull(response.getBody());
-        assertThat(body.id())
-                .as("L'id doit être un UUID valide non null")
-                .isNotNull();
-        assertThat(body.name())
-                .as("Le nom doit correspondre à celui envoyé")
-                .isEqualTo("Alice");
-        assertThat(body.email())
-                .as("L'email doit correspondre à celui envoyé")
-                .isEqualTo("alice@test.com");
-        assertThat(body.createdAt())
-                .as("La date de création doit être renseignée")
-                .isNotNull();
+        assertThat(body.id()).isNotNull();
+        assertThat(body.name()).isEqualTo("Alice");
+        assertThat(body.email()).isEqualTo("alice@test.com");
+        assertThat(body.role()).isEqualTo("ROLE_USER");
+        assertThat(body.createdAt()).isNotNull();
     }
 
     @Test
-    void shouldGetUserById() {
-        // Given — on crée d'abord un utilisateur
-        UserCreationRequest request = new UserCreationRequest("Bob", "bob@test.com");
-        UserDto created = java.util.Objects.requireNonNull(
-                restTemplate.postForEntity("/users", request, UserDto.class).getBody());
+    void shouldLoginAndGetJwt() {
+        createUser("LoginTest", "login@test.com", "secret123", null);
 
-        // When
-        ResponseEntity<UserDto> response = restTemplate.getForEntity(
-                "/users/" + created.id(), UserDto.class);
+        LoginRequest loginRequest = new LoginRequest("login@test.com", "secret123");
+        ResponseEntity<LoginResponse> response = restTemplate.postForEntity(
+                "/auth/login", loginRequest, LoginResponse.class);
 
-        // Then
-        assertThat(response.getStatusCode())
-                .as("GET /users/{id} doit retourner 200 pour un utilisateur existant")
-                .isEqualTo(HttpStatus.OK);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        LoginResponse body = java.util.Objects.requireNonNull(response.getBody());
+        assertThat(body.token()).isNotNull().isNotEmpty();
+        assertThat(body.email()).isEqualTo("login@test.com");
+        assertThat(body.role()).isEqualTo("ROLE_USER");
+    }
+
+    @Test
+    void shouldReturn401ForInvalidCredentials() {
+        createUser("BadLogin", "badlogin@test.com", "correct123", null);
+
+        LoginRequest loginRequest = new LoginRequest("badlogin@test.com", "wrongpassword");
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                "/auth/login", loginRequest, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void shouldGetUserByIdWithJwt() {
+        UserDto created = createUser("Bob", "bob@test.com", "pass123", null);
+        String token = loginAndGetToken("bob@test.com", "pass123");
+
+        ResponseEntity<UserDto> response = restTemplate.exchange(
+                "/users/" + created.id(), HttpMethod.GET,
+                new HttpEntity<>(authHeaders(token)), UserDto.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         UserDto body = java.util.Objects.requireNonNull(response.getBody());
-        assertThat(body.id())
-                .as("L'id retourné doit correspondre à celui demandé")
-                .isEqualTo(created.id());
-        assertThat(body.email())
-                .as("L'email retourné doit correspondre à celui créé")
-                .isEqualTo("bob@test.com");
+        assertThat(body.id()).isEqualTo(created.id());
+        assertThat(body.email()).isEqualTo("bob@test.com");
     }
 
     @Test
     void shouldReturn404ForUnknownUser() {
-        // Given — UUID inexistant
-        String unknownId = UUID.randomUUID().toString();
+        String unknownId = java.util.UUID.randomUUID().toString();
+        createUser("ForAuth", "forauth@test.com", "pass123", null);
+        String token = loginAndGetToken("forauth@test.com", "pass123");
 
-        // When
-        ResponseEntity<String> response = restTemplate.getForEntity(
-                "/users/" + unknownId, String.class);
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/users/" + unknownId, HttpMethod.GET,
+                new HttpEntity<>(authHeaders(token)), String.class);
 
-        // Then
-        assertThat(response.getStatusCode())
-                .as("GET /users/{id} doit retourner 404 pour un utilisateur inconnu")
-                .isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
-    void shouldListAllUsers() {
-        // Given — on crée deux utilisateurs
-        restTemplate.postForEntity("/users", new UserCreationRequest("Charlie", "charlie@test.com"), UserDto.class);
-        restTemplate.postForEntity("/users", new UserCreationRequest("Diana", "diana@test.com"), UserDto.class);
+    void shouldListAllUsersAsAdmin() {
+        createUser("AdminCharlie", "admin@test.com", "admin123", "ROLE_ADMIN");
+        createUser("NormalDiana", "normal@test.com", "normal123", "ROLE_USER");
+        String adminToken = loginAndGetToken("admin@test.com", "admin123");
 
-        // When
         ResponseEntity<Collection<UserDto>> response = restTemplate.exchange(
-                "/users", HttpMethod.GET, null,
+                "/users", HttpMethod.GET,
+                new HttpEntity<>(authHeaders(adminToken)),
                 new ParameterizedTypeReference<Collection<UserDto>>() {});
 
-        // Then
-        assertThat(response.getStatusCode())
-                .as("GET /users doit retourner 200")
-                .isEqualTo(HttpStatus.OK);
-        assertThat(java.util.Objects.requireNonNull(response.getBody()))
-                .as("La liste doit contenir au moins les utilisateurs créés")
-                .isNotEmpty();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(java.util.Objects.requireNonNull(response.getBody())).isNotEmpty();
     }
 
     @Test
-    void shouldDeleteUser() {
-        // Given — on crée un utilisateur
-        UserCreationRequest request = new UserCreationRequest("Eve", "eve@test.com");
-        UserDto created = java.util.Objects.requireNonNull(
-                restTemplate.postForEntity("/users", request, UserDto.class).getBody());
+    void shouldForbidListUsersForNonAdmin() {
+        createUser("NormalEve", "normal2@test.com", "pass123", "ROLE_USER");
+        String userToken = loginAndGetToken("normal2@test.com", "pass123");
 
-        // When — suppression
-        restTemplate.delete("/users/" + created.id());
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/users", HttpMethod.GET,
+                new HttpEntity<>(authHeaders(userToken)), String.class);
 
-        // Then — il ne doit plus exister
-        ResponseEntity<String> response = restTemplate.getForEntity(
-                "/users/" + created.id(), String.class);
-        assertThat(response.getStatusCode())
-                .as("Après suppression, GET doit retourner 404")
-                .isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    void shouldDeleteUserAsAdmin() {
+        UserDto toDelete = createUser("DeleteMe", "delete@test.com", "pass123", "ROLE_USER");
+        createUser("Admin2", "admin2@test.com", "admin123", "ROLE_ADMIN");
+        String adminToken = loginAndGetToken("admin2@test.com", "admin123");
+
+        ResponseEntity<Void> deleteResponse = restTemplate.exchange(
+                "/users/" + toDelete.id(), HttpMethod.DELETE,
+                new HttpEntity<>(authHeaders(adminToken)), Void.class);
+        assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        ResponseEntity<String> getResponse = restTemplate.exchange(
+                "/users/" + toDelete.id(), HttpMethod.GET,
+                new HttpEntity<>(authHeaders(adminToken)), String.class);
+        assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void shouldForbidDeleteUserForNonAdmin() {
+        UserDto user = createUser("NoDelete", "nodelete@test.com", "pass123", "ROLE_USER");
+        String userToken = loginAndGetToken("nodelete@test.com", "pass123");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/users/" + user.id(), HttpMethod.DELETE,
+                new HttpEntity<>(authHeaders(userToken)), String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
     @Test
     void shouldValidateExistingUser() {
-        // Given — on crée un utilisateur
-        UserCreationRequest request = new UserCreationRequest("Frank", "frank@test.com");
-        UserDto created = java.util.Objects.requireNonNull(
-                restTemplate.postForEntity("/users", request, UserDto.class).getBody());
+        UserDto created = createUser("Frank", "frank@test.com", "pass123", null);
+        String token = loginAndGetToken("frank@test.com", "pass123");
 
-        // When
-        ResponseEntity<Boolean> response = restTemplate.getForEntity(
-                "/users/" + created.id() + "/valid", Boolean.class);
+        ResponseEntity<Boolean> response = restTemplate.exchange(
+                "/users/" + created.id() + "/valid", HttpMethod.GET,
+                new HttpEntity<>(authHeaders(token)), Boolean.class);
 
-        // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody())
-                .as("Un utilisateur existant doit être valide (true)")
-                .isTrue();
+        assertThat(response.getBody()).isTrue();
     }
 
     @Test
     void shouldReturnFalseForInvalidUser() {
-        // Given — UUID inexistant
-        String unknownId = UUID.randomUUID().toString();
+        String unknownId = java.util.UUID.randomUUID().toString();
+        createUser("ForAuth2", "forauth2@test.com", "pass123", null);
+        String token = loginAndGetToken("forauth2@test.com", "pass123");
 
-        // When
-        ResponseEntity<Boolean> response = restTemplate.getForEntity(
-                "/users/" + unknownId + "/valid", Boolean.class);
+        ResponseEntity<Boolean> response = restTemplate.exchange(
+                "/users/" + unknownId + "/valid", HttpMethod.GET,
+                new HttpEntity<>(authHeaders(token)), Boolean.class);
 
-        // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody())
-                .as("Un utilisateur inexistant doit retourner false")
-                .isFalse();
+        assertThat(response.getBody()).isFalse();
     }
 
     @Test
     void shouldReturn409WhenEmailAlreadyExists() {
-        // Given — on crée un utilisateur avec un email
         restTemplate.postForEntity("/users",
-                new UserCreationRequest("Grace", "grace@test.com"), UserDto.class);
+                new UserCreationRequest("Grace", "grace@test.com", "pass123", null), UserDto.class);
 
-        // When — on tente de créer un second utilisateur avec le même email
         ResponseEntity<String> response = restTemplate.postForEntity("/users",
-                new UserCreationRequest("Grace2", "grace@test.com"), String.class);
+                new UserCreationRequest("Grace2", "grace@test.com", "pass456", null), String.class);
 
-        // Then
-        assertThat(response.getStatusCode())
-                .as("Un email déjà utilisé doit retourner 409 CONFLICT")
-                .isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     }
 
     @Test
     void shouldReturn400WhenNameIsBlank() {
-        // Given — nom vide
-        UserCreationRequest request = new UserCreationRequest("", "valid@test.com");
+        UserCreationRequest request = new UserCreationRequest("", "valid@test.com", "pass123", null);
 
-        // When
         ResponseEntity<String> response = restTemplate.postForEntity("/users", request, String.class);
 
-        // Then
-        assertThat(response.getStatusCode())
-                .as("Un nom vide doit retourner 400 BAD_REQUEST (validation @NotBlank)")
-                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     @Test
     void shouldReturn400WhenEmailIsInvalid() {
-        // Given — email malformé
-        UserCreationRequest request = new UserCreationRequest("Henry", "pas-un-email");
+        UserCreationRequest request = new UserCreationRequest("Henry", "pas-un-email", "pass123", null);
 
-        // When
         ResponseEntity<String> response = restTemplate.postForEntity("/users", request, String.class);
 
-        // Then
-        assertThat(response.getStatusCode())
-                .as("Un email invalide doit retourner 400 BAD_REQUEST (validation @Email)")
-                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 }
