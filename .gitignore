@@ -47,3 +47,7 @@ Thumbs.db
 # H2 databases (fichiers de persistance locale - recréés automatiquement)
 api_java_3_5/api/data/
 user-api/data/
+
+# Fichiers de sortie de tests
+api-test-results.txt
+user-api/test-output.txt
