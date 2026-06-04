@@ -473,6 +473,59 @@ Cela impose des contraintes importantes :
 
 ---
 
+## Itération 5 — Spring Security + JWT (04/06/2026)
+
+### Ce qui a été fait
+
+| Changement | Fichiers |
+|------------|----------|
+| **user-api** : Spring Security stateless + JWT complet | `SecurityConfig`, `JwtService`, `JwtAuthenticationFilter`, `CustomUserDetailsService`, `AuthController`, `LoginRequest/Response` |
+| **user-api** : `User` avec `password` et `role` | `User.java`, `UserServiceImpl`, `UserController` |
+| **user-api** : `GlobalExceptionHandler` pour préserver les codes HTTP 400/409 malgré Spring Security | `GlobalExceptionHandler.java` |
+| **api (jeux)** : `AuthenticationEntryPoint` pour retourner 401 au lieu de 403 quand JWT absent | `SecurityConfig.java` |
+| **api (jeux)** : `GameController` utilise `SecurityContextHolder` au lieu de `X-UserId` | `GameController.java` |
+| **api (jeux)** : Duplication de la sécurité JWT (`JwtService`, `JwtAuthenticationFilter`) | `common/security/*` |
+| **Tests user-api** : Mis à jour pour JWT (14/14 passent) | `UserControllerIntegrationTest.java` |
+| **Tests api** : Réécrits pour JWT, mais **échecs persistants** | `GameControllerIntegrationTest`, `ConnectFourAndTaquinIntegrationTest`, `JwtAuthContractTest` |
+| **Documentation** | `explication5.md`, `suivi.md` |
+
+### État des tests
+
+- **user-api** : `BUILD SUCCESS` — 14/14 tests passent
+- **api (jeux)** : `BUILD FAILURE` — 5 tests échouent avec `401 UNAUTHORIZED` alors que le serveur retourne `404 NOT_FOUND` (d'après les logs du filtre JWT)
+
+### 🔴 Point bloquant : `TestRestTemplate` retourne 401 malgré un 404 du serveur
+
+**Symptôme** :
+- Les logs du `JwtAuthenticationFilter` montrent que le token est reçu, validé, l'authentification est mise dans le `SecurityContextHolder`, et la chaîne de filtres retourne `status=404`.
+- Mais le test Java reçoit `401 UNAUTHORIZED`.
+
+**Hypothèses** :
+1. **`TestRestTemplate` auto-configuré par Spring Boot envoie une requête de "challenge" basic auth** (requête sans header, reçoit 401, puis requête avec JWT reçoit 404). Le test verrait le 401 de la première requête au lieu du 404 de la deuxième.
+2. **Position du filtre JWT dans la chaîne Spring Security** : `addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)` ne fonctionne pas correctement quand `UsernamePasswordAuthenticationFilter` n'existe pas (pas de `formLogin()`). Le filtre pourrait s'exécuter après `AuthorizationFilter`.
+3. **`UserDetailsServiceAutoConfiguration` crée un `InMemoryUserDetailsManager`** qui entre en conflit avec l'authentification JWT. Cela a été désactivé dans `ApiApplication` mais le problème persiste.
+
+**Ce qui a été essayé sans succès** :
+- Désactivation de `UserDetailsServiceAutoConfiguration`
+- Changement du type de token d'authentification (`UsernamePasswordAuthenticationToken` → `PreAuthenticatedAuthenticationToken`)
+- Changement de la position du filtre (`addFilterBefore` → `addFilterAfter` avec `SecurityContextHolderFilter`)
+- Remplacement de `new HttpEntity<>(authHeaders())` par `new HttpEntity<>(null, authHeaders())` pour éviter l'ambiguïté Java
+- Désactivation du basic auth auto de `TestRestTemplate` via `spring.boot.testcontext.resttemplate.use-basic-auth=false`
+- Utilisation d'un `TestRestTemplate` manuel (`new TestRestTemplate()`) avec URLs absolues
+
+**Facteur aggravant** :
+- Le paramètre `Cwd` de `run_command` n'a pas fonctionné correctement sur Windows/PowerShell. Plusieurs commandes `mvnw.cmd` ont été exécutées dans le mauvais répertoire (`user-api` au lieu de `api_java_3_5/api`), ce qui a faussé les diagnostics initiaux.
+
+**Piste à creuser** :
+- Utiliser `WebTestClient` (WebFlux) à la place de `TestRestTemplate` pour les tests d'intégration
+- Ou vérifier si `TestRestTemplate` suit une redirection qui retourne 401
+- Ou inspecter la réponse HTTP brute avec un proxy/intercepteur pour voir si deux requêtes sont envoyées
+
+**Recommandation** :
+- **Ne pas continuer à tâtonner**. La solution est probablement soit un changement de l'outil de test (passer à `WebTestClient`), soit une configuration manuelle du `RestTemplate` sans comportement caché de `TestRestTemplate`.
+
+---
+
 ## Ce qui a déjà été corrigé
 
 | Bug | Correction | Fichier |

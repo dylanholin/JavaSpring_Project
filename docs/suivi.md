@@ -1,6 +1,6 @@
 # Suivi du projet SquareGames
 
-Dernière mise à jour : 01/06/2026
+Dernière mise à jour : 04/06/2026
 
 ---
 
@@ -61,3 +61,22 @@ Dernière mise à jour : 01/06/2026
 |---|---|
 | Tests d'intégration user-api (UserControllerIntegrationTest) | ✅ |
 | Tests de contrat inter-services (UserValidationContractTest — WireMock) | ✅ |
+
+---
+
+## Itération 5 — Sécurisation avec Spring Security et JWT
+
+| Étape | Statut |
+|---|---|
+| 5.1 — Spring Security stateless, CSRF disabled, PasswordEncoder BCrypt | ✅ |
+| 5.2 — JWT : génération, validation, filtre, endpoint `/auth/login` | ✅ |
+| 5.3a — Champ `role` dans l'entité User, `@PreAuthorize`, rôles dans le JWT | ✅ |
+| 5.3b — JWT dans l'API de jeux, suppression de `X-UserId`, validation locale | ✅ |
+
+## Tests — Itération 5
+
+| Étape | Statut |
+|---|---|
+| Tests user-api mis à jour (JWT, login, `@PreAuthorize`) | ✅ |
+| Tests api (jeux) mis à jour (`Authorization: Bearer`, suppression `X-UserId`) | ✅ (en attente de validation compilation) |
+| Tests de contrat JWT (JwtAuthContractTest, UserValidationContractTest) | ✅ |
