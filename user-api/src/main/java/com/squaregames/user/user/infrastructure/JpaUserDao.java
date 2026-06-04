@@ -54,4 +54,9 @@ public class JpaUserDao implements UserDao {
     public boolean existsByEmail(String email) {
         return repository.existsByEmail(email);
     }
+
+    @Override
+    public Optional<User> findByEmail(String email) {
+        return repository.findByEmail(email);
+    }
 }

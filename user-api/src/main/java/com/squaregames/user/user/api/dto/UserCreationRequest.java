@@ -8,5 +8,7 @@ import jakarta.validation.constraints.NotBlank;
  */
 public record UserCreationRequest(
     @NotBlank String name,
-    @NotBlank @Email String email
+    @NotBlank @Email String email,
+    @NotBlank String password,
+    String role
 ) {}

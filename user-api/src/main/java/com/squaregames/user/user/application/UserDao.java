@@ -22,4 +22,6 @@ public interface UserDao {
     boolean existsById(String id);
 
     boolean existsByEmail(String email);
+
+    Optional<User> findByEmail(String email);
 }

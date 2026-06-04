@@ -10,7 +10,7 @@ import java.util.Optional;
  */
 public interface UserService {
     
-    User createUser(String name, String email);
+    User createUser(String name, String email, String password, String role);
     
     Optional<User> getUserById(String id);
     
@@ -19,4 +19,6 @@ public interface UserService {
     void deleteUser(String id);
     
     boolean isValidUser(String id);
+
+    Optional<User> findByEmail(String email);
 }

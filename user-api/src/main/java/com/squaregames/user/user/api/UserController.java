@@ -7,6 +7,7 @@ import com.squaregames.user.user.domain.User;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,7 +27,7 @@ public class UserController {
 
     @PostMapping
     public ResponseEntity<UserDto> createUser(@Valid @RequestBody UserCreationRequest request) {
-        User user = userService.createUser(request.name(), request.email());
+        User user = userService.createUser(request.name(), request.email(), request.password(), request.role());
         return ResponseEntity.status(HttpStatus.CREATED).body(toDto(user));
     }
 
@@ -38,6 +39,7 @@ public class UserController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public List<UserDto> getAllUsers() {
         return userService.getAllUsers().stream()
             .map(this::toDto)
@@ -45,6 +47,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteUser(@PathVariable String id) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
@@ -56,6 +59,6 @@ public class UserController {
     }
 
     private UserDto toDto(User user) {
-        return new UserDto(user.getId(), user.getName(), user.getEmail(), user.getCreatedAt());
+        return new UserDto(user.getId(), user.getName(), user.getEmail(), user.getRole(), user.getCreatedAt());
     }
 }
