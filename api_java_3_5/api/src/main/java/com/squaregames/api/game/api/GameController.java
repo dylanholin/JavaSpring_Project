@@ -2,6 +2,8 @@ package com.squaregames.api.game.api;
 
 import com.squaregames.api.game.api.dto.*;
 import com.squaregames.api.game.application.GameService;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Collection;
@@ -19,14 +21,13 @@ public class GameController {
     }
 
     @PostMapping
-    public GameDto createGame(@RequestBody GameCreationParams params,
-                              @RequestHeader("X-UserId") String userId) {
-        return gameService.createGame(params, userId);
+    public GameDto createGame(@RequestBody GameCreationParams params) {
+        return gameService.createGame(params, getCurrentUserId());
     }
 
     @GetMapping
-    public Collection<GameDto> listGames(@RequestHeader("X-UserId") String userId) {
-        return gameService.listGames(userId);
+    public Collection<GameDto> listGames() {
+        return gameService.listGames(getCurrentUserId());
     }
 
     @GetMapping("/{gameId}")
@@ -40,8 +41,12 @@ public class GameController {
     }
 
     @PostMapping("/{gameId}/moves")
-    public GameDto playMove(@PathVariable UUID gameId, @RequestBody MoveRequest move,
-                            @RequestHeader("X-UserId") String userId) {
-        return gameService.playMove(gameId, move, userId);
+    public GameDto playMove(@PathVariable UUID gameId, @RequestBody MoveRequest move) {
+        return gameService.playMove(gameId, move, getCurrentUserId());
+    }
+
+    private String getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication.getName();
     }
 }
