@@ -3,6 +3,7 @@ package com.squaregames.api.game.api;
 import com.squaregames.api.common.security.JwtService;
 import com.squaregames.api.game.api.dto.GameCreationParams;
 import com.squaregames.api.game.api.dto.GameDto;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -15,17 +16,16 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Tests de contrat pour la validation JWT locale.
+ * Tests de contrat pour l'authentification JWT.
  *
- * L'authentification est maintenant gérée localement via JWT :
- * - JWT valide → userId extrait du token, accès autorisé
- * - JWT invalide → 401 Unauthorized
- * - Pas de JWT → 401 Unauthorized
- *
- * Plus besoin d'appel réseau vers user-api.
+ * Vérifie que :
+ * - Un JWT valide permet d'accéder aux endpoints
+ * - Un JWT invalide est rejeté (401)
+ * - L'absence de JWT est rejetée (401)
+ * - L'userId extrait du JWT est correctement utilisé
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class UserValidationContractTest {
+class JwtAuthContractTest {
 
     @Autowired
     private TestRestTemplate restTemplate;
@@ -33,11 +33,16 @@ class UserValidationContractTest {
     @Autowired
     private JwtService jwtService;
 
+    private static final String VALID_USER_ID = UUID.randomUUID().toString();
+
+    @BeforeEach
+    void setUp() {
+    }
+
     @Test
     void shouldAllowGameCreationWithValidJwt() {
-        // Given — un JWT valide généré localement
-        String userId = UUID.randomUUID().toString();
-        String token = jwtService.generateToken(userId, userId + "@test.com", List.of("ROLE_USER"));
+        // Given — un JWT valide
+        String token = jwtService.generateToken(VALID_USER_ID, "test@test.com", List.of("ROLE_USER"));
 
         GameCreationParams params = new GameCreationParams("tictactoe", 2, 3);
         HttpHeaders headers = new HttpHeaders();
@@ -52,7 +57,7 @@ class UserValidationContractTest {
                 .isEqualTo(HttpStatus.OK);
         assertThat(java.util.Objects.requireNonNull(response.getBody()).currentPlayerId())
                 .as("Le currentPlayerId doit être l'utilisateur du JWT")
-                .isEqualTo(UUID.fromString(userId));
+                .isEqualTo(UUID.fromString(VALID_USER_ID));
     }
 
     @Test
@@ -60,14 +65,14 @@ class UserValidationContractTest {
         // Given — un JWT invalide
         GameCreationParams params = new GameCreationParams("tictactoe", 2, 3);
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer invalid.token.value");
+        headers.set("Authorization", "Bearer invalid.token.here");
         ResponseEntity<String> response = restTemplate.exchange(
                 "/games", HttpMethod.POST,
                 new HttpEntity<>(params, headers), String.class);
 
         // Then
         assertThat(response.getStatusCode())
-                .as("Un JWT invalide doit retourner 401")
+                .as("Un JWT invalide doit être rejeté (401)")
                 .isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
@@ -81,7 +86,7 @@ class UserValidationContractTest {
 
         // Then
         assertThat(response.getStatusCode())
-                .as("Sans Authorization, la requête doit retourner 401")
+                .as("Sans Authorization, la requête doit être rejetée (401)")
                 .isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 }

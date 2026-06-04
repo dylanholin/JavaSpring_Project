@@ -1,16 +1,16 @@
 package com.squaregames.api.game.api;
 
+import com.squaregames.api.common.security.JwtService;
 import com.squaregames.api.game.api.dto.GameCreationParams;
 import com.squaregames.api.game.api.dto.GameDto;
 import com.squaregames.api.game.api.dto.MoveRequest;
 import com.squaregames.api.game.api.dto.TokenMovesDto;
-import com.squaregames.api.game.application.UserValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 
@@ -19,8 +19,6 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doNothing;
 
 /**
  * Tests d'intégration pour l'API Game.
@@ -30,43 +28,63 @@ import static org.mockito.Mockito.doNothing;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class GameControllerIntegrationTest {
 
-    @Autowired
+    @LocalServerPort
+    private int port;
+
     private TestRestTemplate restTemplate;
 
-    @MockitoBean
-    private UserValidator userValidator;
+    @Autowired
+    private JwtService jwtService;
 
     private UUID createdGameId;
     private static final String TEST_USER_ID = "00000000-0000-0000-0000-000000000001";
+    private String jwtToken;
+
+    private String baseUrl() {
+        return "http://localhost:" + port;
+    }
 
     @BeforeEach
     void setUp() {
-        doNothing().when(userValidator).validate(anyString());
+        this.restTemplate = new TestRestTemplate();
+        jwtToken = jwtService.generateToken(TEST_USER_ID, "test@test.com", List.of("ROLE_USER"));
 
         // Créer une partie avant chaque test
         GameCreationParams params = new GameCreationParams("tictactoe", 2, 3);
         HttpHeaders headers = new HttpHeaders();
-        headers.set("X-UserId", TEST_USER_ID);
+        headers.set("Authorization", "Bearer " + jwtToken);
         HttpEntity<GameCreationParams> entity = new HttpEntity<>(params, headers);
         ResponseEntity<GameDto> response = restTemplate.exchange(
-                "/games", HttpMethod.POST, entity, GameDto.class);
+                baseUrl() + "/games", HttpMethod.POST, entity, GameDto.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         GameDto body = java.util.Objects.requireNonNull(response.getBody());
         createdGameId = body.id();
     }
 
+    private HttpHeaders authHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + jwtToken);
+        return headers;
+    }
+
+    private HttpHeaders authHeadersFor(String userId) {
+        String token = jwtService.generateToken(userId, userId + "@test.com", List.of("ROLE_USER"));
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + token);
+        return headers;
+    }
+
     @Test
     void shouldCreateGame() {
         // Given
         GameCreationParams params = new GameCreationParams("tictactoe", 2, 3);
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("X-UserId", TEST_USER_ID);
+        HttpHeaders headers = authHeaders();
         HttpEntity<GameCreationParams> entity = new HttpEntity<>(params, headers);
 
         // When
         ResponseEntity<GameDto> response = restTemplate.exchange(
-                "/games", HttpMethod.POST, entity, GameDto.class);
+                baseUrl() + "/games", HttpMethod.POST, entity, GameDto.class);
 
         // Then
         assertThat(response.getStatusCode())
@@ -79,7 +97,7 @@ class GameControllerIntegrationTest {
         assertThat(body.boardSize()).as("La taille du plateau doit être 3").isEqualTo(3);
         assertThat(body.status()).as("Le statut initial doit être ONGOING").isEqualTo("ONGOING");
         assertThat(body.currentPlayerId())
-                .as("Le premier joueur (currentPlayerId) doit être l'utilisateur qui a créé la partie (X-UserId)")
+                .as("Le premier joueur (currentPlayerId) doit être l'utilisateur du JWT")
                 .isEqualTo(UUID.fromString(TEST_USER_ID));
     }
 
@@ -87,9 +105,9 @@ class GameControllerIntegrationTest {
     void shouldListGames() {
         // When
         HttpHeaders headers = new HttpHeaders();
-        headers.set("X-UserId", TEST_USER_ID);
+        headers.set("Authorization", "Bearer " + jwtToken);
         ResponseEntity<Collection<GameDto>> response = restTemplate.exchange(
-                "/games",
+                baseUrl() + "/games",
                 HttpMethod.GET,
                 new HttpEntity<>(headers),
                 new ParameterizedTypeReference<>() {});
@@ -110,8 +128,9 @@ class GameControllerIntegrationTest {
     @Test
     void shouldGetGameById() {
         // When
-        ResponseEntity<GameDto> response = restTemplate.getForEntity(
-                "/games/" + createdGameId, GameDto.class);
+        ResponseEntity<GameDto> response = restTemplate.exchange(
+                baseUrl() + "/games/" + createdGameId, HttpMethod.GET,
+                new HttpEntity<>(null, authHeaders()), GameDto.class);
 
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -125,8 +144,10 @@ class GameControllerIntegrationTest {
         UUID unknownId = UUID.randomUUID();
 
         // When
-        ResponseEntity<GameDto> response = restTemplate.getForEntity(
-                "/games/" + unknownId, GameDto.class);
+        HttpEntity<Void> entity = new HttpEntity<>(authHeaders());
+        ResponseEntity<GameDto> response = restTemplate.exchange(
+                baseUrl() + "/games/" + unknownId, HttpMethod.GET,
+                entity, GameDto.class);
 
         // Then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
@@ -136,9 +157,9 @@ class GameControllerIntegrationTest {
     void shouldGetPossibleMoves() {
         // When
         ResponseEntity<Collection<TokenMovesDto>> response = restTemplate.exchange(
-                "/games/" + createdGameId + "/moves",
+                baseUrl() + "/games/" + createdGameId + "/moves",
                 HttpMethod.GET,
-                null,
+                new HttpEntity<>(null, authHeaders()),
                 new ParameterizedTypeReference<>() {});
 
         // Then
@@ -155,7 +176,8 @@ class GameControllerIntegrationTest {
     void shouldPlayMove() {
         // Le currentPlayerId doit être TEST_USER_ID (créateur de la partie)
         GameDto gameState = java.util.Objects.requireNonNull(
-                restTemplate.getForEntity("/games/" + createdGameId, GameDto.class).getBody());
+                restTemplate.exchange(baseUrl() + "/games/" + createdGameId, HttpMethod.GET,
+                        new HttpEntity<>(null, authHeaders()), GameDto.class).getBody());
         assertThat(gameState.currentPlayerId())
                 .as("Le premier joueur doit être l'utilisateur qui a créé la partie")
                 .isEqualTo(UUID.fromString(TEST_USER_ID));
@@ -165,12 +187,12 @@ class GameControllerIntegrationTest {
         MoveRequest move = new MoveRequest("X", 0, 0);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("X-UserId", currentPlayerId);
+        headers.set("Authorization", "Bearer " + jwtService.generateToken(currentPlayerId, currentPlayerId + "@test.com", List.of("ROLE_USER")));
         HttpEntity<MoveRequest> request = new HttpEntity<>(move, headers);
 
         // When
         ResponseEntity<GameDto> response = restTemplate.exchange(
-                "/games/" + createdGameId + "/moves",
+                baseUrl() + "/games/" + createdGameId + "/moves",
                 HttpMethod.POST,
                 request,
                 GameDto.class);
@@ -190,20 +212,21 @@ class GameControllerIntegrationTest {
     @Test
     void shouldReturn400ForInvalidMove() {
         // Récupère le currentPlayerId depuis l'état du jeu
-        ResponseEntity<GameDto> gameState = restTemplate.getForEntity(
-                "/games/" + createdGameId, GameDto.class);
+        ResponseEntity<GameDto> gameState = restTemplate.exchange(
+                baseUrl() + "/games/" + createdGameId, HttpMethod.GET,
+                new HttpEntity<>(null, authHeaders()), GameDto.class);
         String currentPlayerId = java.util.Objects.requireNonNull(gameState.getBody()).currentPlayerId().toString();
 
         // Given - token inexistant
         MoveRequest move = new MoveRequest("INVALID_TOKEN", 0, 0);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("X-UserId", currentPlayerId);
+        headers.set("Authorization", "Bearer " + jwtService.generateToken(currentPlayerId, currentPlayerId + "@test.com", List.of("ROLE_USER")));
         HttpEntity<MoveRequest> request = new HttpEntity<>(move, headers);
 
         // When
         ResponseEntity<String> response = restTemplate.exchange(
-                "/games/" + createdGameId + "/moves",
+                baseUrl() + "/games/" + createdGameId + "/moves",
                 HttpMethod.POST,
                 request,
                 String.class);
@@ -219,11 +242,11 @@ class GameControllerIntegrationTest {
         MoveRequest move = new MoveRequest("X", 0, 0);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("X-UserId", wrongUserId);
+        headers.set("Authorization", "Bearer " + jwtService.generateToken(wrongUserId, wrongUserId + "@test.com", List.of("ROLE_USER")));
         HttpEntity<MoveRequest> request = new HttpEntity<>(move, headers);
 
         ResponseEntity<String> response = restTemplate.exchange(
-                "/games/" + createdGameId + "/moves",
+                baseUrl() + "/games/" + createdGameId + "/moves",
                 HttpMethod.POST,
                 request,
                 String.class);
@@ -237,30 +260,30 @@ class GameControllerIntegrationTest {
     }
 
     @Test
-    void shouldReturn400WhenXUserIdHeaderMissingOnCreate() {
-        // Sans header X-UserId, Spring doit retourner 400
+    void shouldReturn401WhenNoAuthHeaderOnCreate() {
+        // Sans header Authorization, Spring Security doit retourner 401
         GameCreationParams params = new GameCreationParams("tictactoe", 2, 3);
         HttpEntity<GameCreationParams> entity = new HttpEntity<>(params);
 
         ResponseEntity<String> response = restTemplate.exchange(
-                "/games", HttpMethod.POST, entity, String.class);
+                baseUrl() + "/games", HttpMethod.POST, entity, String.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     @Test
-    void shouldReturn400WhenXUserIdHeaderMissingOnPlayMove() {
-        // Sans header X-UserId, Spring doit retourner 400
+    void shouldReturn401WhenNoAuthHeaderOnPlayMove() {
+        // Sans header Authorization, Spring Security doit retourner 401
         MoveRequest move = new MoveRequest("X", 0, 0);
         HttpEntity<MoveRequest> entity = new HttpEntity<>(move);
 
         ResponseEntity<String> response = restTemplate.exchange(
-                "/games/" + createdGameId + "/moves",
+                baseUrl() + "/games/" + createdGameId + "/moves",
                 HttpMethod.POST,
                 entity,
                 String.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     /**
@@ -277,9 +300,9 @@ class GameControllerIntegrationTest {
         // --- Création de la partie ---
         GameCreationParams params = new GameCreationParams("tictactoe", 2, 3);
         HttpHeaders headers = new HttpHeaders();
-        headers.set("X-UserId", TEST_USER_ID);
+        headers.set("Authorization", "Bearer " + jwtToken);
         GameDto game = java.util.Objects.requireNonNull(
-                restTemplate.exchange("/games", HttpMethod.POST,
+                restTemplate.exchange(baseUrl() + "/games", HttpMethod.POST,
                         new HttpEntity<>(params, headers), GameDto.class).getBody());
 
         UUID gameId = game.id();
@@ -328,7 +351,8 @@ class GameControllerIntegrationTest {
 
         // --- Vérification de l'état final via GET ---
         GameDto finalState = java.util.Objects.requireNonNull(
-                restTemplate.getForEntity("/games/" + gameId, GameDto.class).getBody());
+                restTemplate.exchange(baseUrl() + "/games/" + gameId, HttpMethod.GET,
+                        new HttpEntity<>(null, authHeaders()), GameDto.class).getBody());
         assertThat(finalState.status())
                 .as("L'état final en base doit être TERMINATED")
                 .isEqualTo("TERMINATED");
@@ -341,8 +365,9 @@ class GameControllerIntegrationTest {
     private String getFirstAvailableToken(UUID gameId) {
         Collection<TokenMovesDto> moves = java.util.Objects.requireNonNull(
                 restTemplate.exchange(
-                        "/games/" + gameId + "/moves",
-                        HttpMethod.GET, null,
+                        baseUrl() + "/games/" + gameId + "/moves",
+                        HttpMethod.GET,
+                        new HttpEntity<>(null, authHeaders()),
                         new ParameterizedTypeReference<Collection<TokenMovesDto>>() {}).getBody());
         return moves.stream()
                 .filter(t -> !t.allowedMoves().isEmpty())
@@ -354,11 +379,10 @@ class GameControllerIntegrationTest {
     /** Méthode utilitaire : joue un coup et retourne le GameDto résultant. */
     private GameDto playMove(UUID gameId, String userId, String tokenName, int row, int col) {
         MoveRequest move = new MoveRequest(tokenName, row, col);
-        HttpHeaders headers = new HttpHeaders();
+        HttpHeaders headers = authHeadersFor(userId);
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("X-UserId", userId);
         ResponseEntity<GameDto> response = restTemplate.exchange(
-                "/games/" + gameId + "/moves",
+                baseUrl() + "/games/" + gameId + "/moves",
                 HttpMethod.POST,
                 new HttpEntity<>(move, headers),
                 GameDto.class);
@@ -371,19 +395,19 @@ class GameControllerIntegrationTest {
     @Test
     void shouldCreateDifferentGameTypes() {
         HttpHeaders headers = new HttpHeaders();
-        headers.set("X-UserId", TEST_USER_ID);
+        headers.set("Authorization", "Bearer " + jwtToken);
 
         // Test ConnectFour — l'ID moteur est "connect4"
         GameCreationParams connectFour = new GameCreationParams("connect4", 2, 7);
         ResponseEntity<GameDto> responseCF = restTemplate.exchange(
-                "/games", HttpMethod.POST, new HttpEntity<>(connectFour, headers), GameDto.class);
+                baseUrl() + "/games", HttpMethod.POST, new HttpEntity<>(connectFour, headers), GameDto.class);
         assertThat(responseCF.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(java.util.Objects.requireNonNull(responseCF.getBody()).gameType()).isEqualTo("connect4");
 
         // Test Taquin — l'ID moteur est "15 puzzle"
         GameCreationParams taquin = new GameCreationParams("15 puzzle", 1, 4);
         ResponseEntity<GameDto> responseTaquin = restTemplate.exchange(
-                "/games", HttpMethod.POST, new HttpEntity<>(taquin, headers), GameDto.class);
+                baseUrl() + "/games", HttpMethod.POST, new HttpEntity<>(taquin, headers), GameDto.class);
         assertThat(responseTaquin.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(java.util.Objects.requireNonNull(responseTaquin.getBody()).gameType()).isEqualTo("15 puzzle");
     }

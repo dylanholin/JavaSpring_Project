@@ -1,26 +1,23 @@
 package com.squaregames.api.game.api;
 
+import com.squaregames.api.common.security.JwtService;
 import com.squaregames.api.game.api.dto.GameCreationParams;
 import com.squaregames.api.game.api.dto.GameDto;
 import com.squaregames.api.game.api.dto.MoveRequest;
 import com.squaregames.api.game.api.dto.PositionDto;
 import com.squaregames.api.game.api.dto.TokenMovesDto;
-import com.squaregames.api.game.application.UserValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.*;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doNothing;
 
 /**
  * Tests d'intégration pour ConnectFour et Taquin.
@@ -44,15 +41,14 @@ class ConnectFourAndTaquinIntegrationTest {
     @Autowired
     private TestRestTemplate restTemplate;
 
-    @MockitoBean
-    private UserValidator userValidator;
+    @Autowired
+    private JwtService jwtService;
 
     private static final String PLAYER_A = "00000000-0000-0000-0000-000000000001";
     private static final String PLAYER_B = "00000000-0000-0000-0000-000000000002";
 
     @BeforeEach
     void setUp() {
-        doNothing().when(userValidator).validate(anyString());
     }
 
     // ========================================================================
@@ -199,12 +195,17 @@ class ConnectFourAndTaquinIntegrationTest {
     // Méthodes utilitaires
     // ========================================================================
 
+    private HttpHeaders authHeadersFor(String userId) {
+        String token = jwtService.generateToken(userId, userId + "@test.com", List.of("ROLE_USER"));
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + token);
+        return headers;
+    }
+
     private GameDto createGame(String gameType, int playerCount, int boardSize, String userId) {
         GameCreationParams params = new GameCreationParams(gameType, playerCount, boardSize);
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("X-UserId", userId);
         ResponseEntity<GameDto> response = restTemplate.exchange(
-                "/games", HttpMethod.POST, new HttpEntity<>(params, headers), GameDto.class);
+                "/games", HttpMethod.POST, new HttpEntity<>(params, authHeadersFor(userId)), GameDto.class);
         assertThat(response.getStatusCode())
                 .as("La création de partie %s doit retourner 200".formatted(gameType))
                 .isEqualTo(HttpStatus.OK);
@@ -212,14 +213,15 @@ class ConnectFourAndTaquinIntegrationTest {
     }
 
     private GameDto getGame(UUID gameId) {
-        ResponseEntity<GameDto> response = restTemplate.getForEntity("/games/" + gameId, GameDto.class);
+        ResponseEntity<GameDto> response = restTemplate.exchange(
+                "/games/" + gameId, HttpMethod.GET, new HttpEntity<>(null, authHeadersFor(PLAYER_A)), GameDto.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         return java.util.Objects.requireNonNull(response.getBody());
     }
 
     private Collection<TokenMovesDto> getMoves(UUID gameId) {
         ResponseEntity<String> raw = restTemplate.exchange(
-                "/games/" + gameId + "/moves", HttpMethod.GET, null, String.class);
+                "/games/" + gameId + "/moves", HttpMethod.GET, new HttpEntity<>(null, authHeadersFor(PLAYER_A)), String.class);
         if (raw.getStatusCode() != HttpStatus.OK) {
             throw new AssertionError("GET /moves returned " + raw.getStatusCode() + ": " + raw.getBody());
         }
@@ -242,9 +244,8 @@ class ConnectFourAndTaquinIntegrationTest {
 
     private ResponseEntity<String> playMoveRaw(UUID gameId, String userId, String tokenName, int row, int col) {
         MoveRequest move = new MoveRequest(tokenName, row, col);
-        HttpHeaders headers = new HttpHeaders();
+        HttpHeaders headers = authHeadersFor(userId);
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("X-UserId", userId);
         return restTemplate.exchange(
                 "/games/" + gameId + "/moves",
                 HttpMethod.POST, new HttpEntity<>(move, headers), String.class);
