@@ -17,7 +17,6 @@ import java.util.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.*;
 
 /**
@@ -39,9 +38,6 @@ class GameServiceImplTest {
     @Mock
     private Game game;
 
-    @Mock
-    private UserValidator userValidator;
-
     private GameServiceImpl gameService;
 
     private static final String USER_ID = "00000000-0000-0000-0000-000000000001";
@@ -50,9 +46,8 @@ class GameServiceImplTest {
     void setUp() {
         lenient().when(gamePlugin.getGameType()).thenReturn("tictactoe");
         lenient().when(gamePlugin.getFactory()).thenReturn(gameFactory);
-        lenient().doNothing().when(userValidator).validate(any());
 
-        gameService = new GameServiceImpl(gameDao, List.of(gamePlugin), userValidator);
+        gameService = new GameServiceImpl(gameDao, List.of(gamePlugin));
     }
 
     @Test
@@ -96,32 +91,6 @@ class GameServiceImplTest {
         verifyNoInteractions(gameFactory);
     }
 
-    @Test
-    void shouldValidateUserOnCreateGame() {
-        GameCreationParams params = new GameCreationParams("tictactoe", 2, 3);
-        UUID userUuid = UUID.fromString(USER_ID);
-        when(gameFactory.createGame(anyInt(), ArgumentMatchers.<Set<UUID>>any())).thenReturn(game);
-        when(game.getId()).thenReturn(UUID.randomUUID());
-        when(game.getFactoryId()).thenReturn("tictactoe");
-        when(game.getPlayerIds()).thenReturn(Set.of(userUuid));
-        when(game.getBoardSize()).thenReturn(3);
-        when(game.getStatus()).thenReturn(fr.le_campus_numerique.square_games.engine.GameStatus.ONGOING);
-        when(gameDao.upsert(any())).thenReturn(game);
-
-        gameService.createGame(params, USER_ID);
-
-        // Vérifie que la validation utilisateur est bien appelée
-        verify(userValidator).validate(USER_ID);
-    }
-
-    @Test
-    void shouldValidateUserOnListGames() {
-        when(gameDao.findByPlayerId(USER_ID)).thenReturn(List.of());
-
-        gameService.listGames(USER_ID);
-
-        verify(userValidator).validate(USER_ID);
-    }
 
     @Test
     void shouldThrowExceptionForUnknownGameType() {
