@@ -41,12 +41,12 @@ game/
 ├── application/     ← Cœur métier : services + PORTS (interfaces)
 │   ├── GameService / GameServiceImpl    ← logique métier
 │   ├── GameDao.java                     ← PORT (interface)
-│   ├── UserValidator.java               ← PORT (interface)
+│   ├── UserValidator.java               ← PORT (interface) — @Deprecated (itération 5)
 │   └── GamePlugin.java
 ├── domain/          ← Entités JPA (modèle persistant)
 └── infrastructure/  ← Adapters de SORTIE (détails techniques)
-    ├── JpaGameDao / JdbcGameDao / InMemoryGameDao  ← implémentent GameDao
-    └── RestUserValidator                            ← implémente UserValidator
+    ├── JpaGameDao / JdbcGameDao (@Deprecated) / InMemoryGameDao (@Deprecated)  ← implémentent GameDao
+    └── RestUserValidator (@Deprecated)              ← implémente UserValidator (itération 4)
 ```
 
 **Pourquoi le DAO n'est-il pas regroupé dans un seul package `dao` ?**

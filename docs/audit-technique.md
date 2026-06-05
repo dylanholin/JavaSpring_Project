@@ -550,7 +550,7 @@ De plus, l'endpoint `/error` (utilisé par Spring Boot pour retourner les erreur
 - Montre la progression : InMemory → JDBC → JPA
 - Sert de comparaison pédagogique pour comprendre les avantages de JPA
 
-**Recommandation** : Ne pas supprimer, mais ajouter un commentaire `@Deprecated` pour indiquer qu'il ne doit plus être utilisé en production.
+**Recommandation appliquée** : La classe est annotée `@Deprecated` avec Javadoc indiquant `JpaGameDao` comme remplacement.
 
 ### InMemoryGameDao — utile pour le développement rapide
 
@@ -567,13 +567,23 @@ De plus, l'endpoint `/error` (utilisé par Spring Boot pour retourner les erreur
 - Données perdues au redémarrage
 - Pas de persistance
 
-**Recommandation** : Garder — utile comme DAO de fallback pour les tests de développement rapide.
+**Recommandation appliquée** : La classe est annotée `@Deprecated` avec Javadoc indiquant `JpaGameDao` comme remplacement.
+
+### UserValidator et RestUserValidator — remplacés par JWT
+
+**Fichiers** :
+- `api_java_3_5/api/src/main/java/com/squaregames/api/game/application/UserValidator.java`
+- `api_java_3_5/api/src/main/java/com/squaregames/api/game/infrastructure/RestUserValidator.java`
+
+**Statut** : `@Deprecated` (itération 5). Aucune implémentation n'est plus injectée dans `GameServiceImpl`.
+
+**Pourquoi** : La validation utilisateur est maintenant implicite. Si le JWT est valide, l'utilisateur existe (il a été créé dans user-api). Plus besoin d'appel réseau `GET /users/{id}/valid` à chaque requête.
 
 ---
 
 ## Analyse de couverture de tests
 
-**Total** : 70 tests (60 api + 10 user-api), estimation ~65% de couverture.
+**Total** : 74 tests (60 api + 14 user-api), estimation ~65% de couverture.
 
 | # | Item | Fait ? | Toujours utile ? | Priorité | Justification |
 |---|------|--------|-----------------|----------|---------------|

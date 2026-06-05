@@ -647,7 +647,7 @@ jwt.expiration-ms=86400000
 - ✅ `@PreAuthorize("hasRole('ADMIN')")` sur les endpoints sensibles
 - ✅ `GlobalExceptionHandler.java` — préserve les codes HTTP 400 et 409
 - ✅ `GameController.java` — extraction du userId via `SecurityContextHolder`
-- ✅ Suppression complète de `X-UserId` et `UserValidator`
+- ✅ Suppression de `X-UserId` — `UserValidator` et `RestUserValidator` annotés `@Deprecated` (conservés pédagogiquement)
 - ✅ `AuthenticationEntryPoint` retournant 401 dans l'api de jeux
 
 ---
@@ -748,9 +748,9 @@ Cette clé est définie dans `application.properties` des deux applications. Ell
 
 Les filtres des deux applications ont la **même logique** (extraire le Bearer, parser le JWT, mettre l'Authentication dans le contexte) mais sont dans des packages différents. On pourrait factoriser dans une librairie commune, mais pour cet exercice la duplication est acceptable.
 
-### Suppression de RestUserValidator
+### RestUserValidator et UserValidator — obsolètes
 
-`RestUserValidator` et l'interface `UserValidator` ont été supprimés de l'api de jeux car la validation utilisateur est maintenant implicite : si le JWT est valide, l'utilisateur existe (il a été créé dans user-api à un moment donné).
+`RestUserValidator` et l'interface `UserValidator` sont annotés `@Deprecated` dans l'api de jeux. La validation utilisateur est maintenant implicite : si le JWT est valide, l'utilisateur existe (il a été créé dans user-api à un moment donné). Les classes sont conservées pour valeur pédagogique (illustrent le pattern Port/Adapter et la validation inter-services de l'itération 4).
 
 ### Console H2 et Spring Security
 
