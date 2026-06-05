@@ -699,7 +699,10 @@ La pyramide des tests recommande d'avoir :
 
 Ces tests démarrent une VRAIE application Spring Boot sur un port aléatoire (`RANDOM_PORT`). Ils appellent l'API via `TestRestTemplate` comme le ferait un vrai client. Seul le `UserValidator` est mocké pour éviter de dépendre de `user-api`.
 
-**Pourquoi "golden master" ?** Ces tests servent de référence : si un refactoring casse un test d'intégration, c'est qu'on a changé le comportement observable de l'API. Ils ont découvert un vrai bug : le token était cherché dans `getBoard()` au lieu de `getRemainingTokens()`.
+**Pourquoi "golden master" ?** Ces tests servent de référence : si un refactoring casse un test d'intégration, c'est qu'on a changé le comportement observable de l'API. Ils ont découvert plusieurs bugs réels :
+- Le token était cherché uniquement dans `getRemainingTokens()`, mais pour le **taquin** les tuiles sont sur le `board` dès la création → `Token introuvable` en 400.
+- Le calcul `areNeighbors()` dans le moteur taquin était faux (`Math.abs(a.y()) - b.y()` au lieu de `Math.abs(a.y() - b.y())`), rendant certains coups impossibles.
+- Correction : recherche fallback dans `getBoard().values()` si le token n'est pas dans `getRemainingTokens()`.
 
 **Niveau 2 : Tests de contrat (WireMock)**
 

@@ -331,9 +331,10 @@ et propose un plan de refactoring étape par étape."
 **Points de vigilance :**
 - 🚨 **CRITIQUE** : L'IA peut proposer du code qui compile mais casse la logique métier
 - 🚨 **CRITIQUE** : Dans ce projet, l'IA a proposé de chercher le token dans `getBoard()` au lieu de `getRemainingTokens()` → bug fonctionnel détecté par les tests
+- 🚨 **CRITIQUE** (nouveau, post-itération 6) : Le moteur taquin contenait un bug mathématique dans `areNeighbors()` — `Math.abs(a.y()) - b.y()` au lieu de `Math.abs(a.y() - b.y())`. Ce bug était intermittent (passait quand `y >= empty.y`, échouait quand `y < empty.y`). Les tests unitaires du moteur ne l'avaient pas détecté car ils ne couvraient pas cette configuration. Seul un test d'intégration qui joue un vrai coup au taquin l'aurait attrapé.
 - ⚠️ Toujours conserver une branche Git avant refactoring majeur
 - ⚠️ Ne pas supprimer l'ancien code avant de valider le nouveau (utiliser @Deprecated d'abord)
-- ✅ Les tests d'intégration (Golden Master) sont la seule protection fiable
+- ✅ Les tests d'intégration (Golden Master) sont la seule protection fiable — ils ont détecté à la fois le bug `areNeighbors` (moteur) et le bug `playMove` (API).
 
 ---
 

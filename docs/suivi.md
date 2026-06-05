@@ -100,4 +100,14 @@ Dernière mise à jour : 05/06/2026
 
 ---
 
+## Corrections post-itération 6 (05/06/2026)
+
+| Correction | Fichier | Description |
+|---|---|---|
+| BUG-4 — `areNeighbors()` taquin | `TaquinGame.java` | Distance de Manhattan incorrecte (`Math.abs(a.y()) - b.y()` → `Math.abs(a.y() - b.y())`) |
+| BUG-5 — `playMove` token introuvable | `GameServiceImpl.java` | Fallback sur `getBoard()` si le token n'est pas dans `getRemainingTokens()` |
+| Test `taquin_shouldPlayMove` | `ConnectFourAndTaquinIntegrationTest.java` | Nouveau test d'intégration qui sécurise le coup valide au taquin |
+
+---
+
 Dernière mise à jour : 05/06/2026

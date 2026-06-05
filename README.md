@@ -239,7 +239,7 @@ JavaSpring_Project/
 │   ├── src/test/java/...              ← Tests
 │   ├── README.md
 │   └── pom.xml
-├── cda-java-spring-game-engine-main/  ← Moteur de jeu (bibliothèque, à installer en local)
+├── cda-java-spring-game-engine-main/  ← Moteur de jeu (fork de [le-campus-numerique/cda-java-spring-game-engine](https://github.com/le-campus-numerique/cda-java-spring-game-engine/packages/2374786))
 ├── img/                              ← Captures d'écran du projet
 ├── AGENTS.md                          ← Règles de travail pour l'IA
 ├── docs/                              ← Documentation pédagogique
