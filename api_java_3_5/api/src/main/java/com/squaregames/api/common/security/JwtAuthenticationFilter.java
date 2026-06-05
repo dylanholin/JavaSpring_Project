@@ -27,13 +27,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         String authHeader = request.getHeader("Authorization");
-        System.out.println("[JWT] " + request.getMethod() + " " + request.getRequestURI() + " | auth=" + authHeader);
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-            boolean valid = jwtService.isTokenValid(token);
-            System.out.println("[JWT] Token valid=" + valid);
-            if (valid) {
+            if (jwtService.isTokenValid(token)) {
                 String userId = jwtService.extractUserId(token);
                 List<String> roles = jwtService.extractRoles(token);
                 List<SimpleGrantedAuthority> authorities = roles.stream()
@@ -43,11 +40,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 PreAuthenticatedAuthenticationToken authentication =
                         new PreAuthenticatedAuthenticationToken(userId, null, authorities);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-                System.out.println("[JWT] Auth set for " + userId + " | isAuthenticated=" + authentication.isAuthenticated());
             }
         }
 
         filterChain.doFilter(request, response);
-        System.out.println("[JWT] After chain | status=" + response.getStatus());
     }
 }
