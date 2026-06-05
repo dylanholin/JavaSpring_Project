@@ -15,6 +15,7 @@
 - **Tests** : 60 tests (api) + 14 tests (user-api) — Golden Master
 - **Sécurité** : Spring Security + JWT (itération 5) — authentification stateless, BCrypt, rôles
 - **Moteur de jeu** : bibliothèque externe `square-games-engine` (JAR fourni, code source non modifiable)
+- **Documentation pédagogique** : [explication6.md](explication6.md) — méthodologie d'assistance IA sur le projet (itération 6)
 
 ---
 

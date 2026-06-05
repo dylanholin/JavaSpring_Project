@@ -80,3 +80,24 @@ Dernière mise à jour : 05/06/2026
 | Tests user-api mis à jour (JWT, login, `@PreAuthorize`) | ✅ |
 | Tests api (jeux) mis à jour (`Authorization: Bearer`, suppression `X-UserId`) | ✅ (60/60 — correctif filtre JWT `addFilterBefore`) |
 | Tests de contrat JWT (JwtAuthContractTest, UserValidationContractTest) | ✅ |
+
+---
+
+## Itération 6 — Journée IA : Remédiation & Méthodologie
+
+| Étape | Statut |
+|---|---|
+| 6.1 — Bilan individuel des difficultés (architecture hexagonale, JPA, microservices, JWT) | ✅ |
+| 6.2 — Remédiation par l'IA (tests des prompts, identification des limites) | ✅ |
+| 6.3 — Méthodologie d'assistance IA formalisée (6 étapes) | ✅ |
+| 6.4 — Éléments pour le débat collectif | ✅ |
+
+## Livrables Itération 6
+
+| Document | Description |
+|---|---|
+| [explication6.md](explication6.md) | Document pédagogique complet — phases 1 à 4 avec exemples concrets du projet |
+
+---
+
+Dernière mise à jour : 05/06/2026
