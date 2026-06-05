@@ -103,6 +103,9 @@ public class GameServiceImpl implements GameService {
         Token token = game.getRemainingTokens().stream()
                 .filter(t -> t.getName().equals(move.tokenName()))
                 .findFirst()
+                .or(() -> game.getBoard().values().stream()
+                        .filter(t -> t.getName().equals(move.tokenName()))
+                        .findFirst())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Token introuvable : " + move.tokenName()));
 

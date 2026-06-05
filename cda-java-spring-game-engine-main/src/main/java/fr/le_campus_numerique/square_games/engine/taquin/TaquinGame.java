@@ -190,7 +190,7 @@ public class TaquinGame implements Game {
 
     private static boolean areNeighbors(@NotNull CellPosition a, @NotNull CellPosition b) {
         assert (a != null) && (b != null);
-        return (Math.abs(a.x() - b.x()) + Math.abs(a.y()) - b.y()) == 1;
+        return (Math.abs(a.x() - b.x()) + Math.abs(a.y() - b.y())) == 1;
     }
 
     private final class Tile implements Token {
