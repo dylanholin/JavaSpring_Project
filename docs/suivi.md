@@ -96,7 +96,7 @@ Dernière mise à jour : 05/06/2026
 
 | Document | Description |
 |---|---|
-| [explication6.md](explication6.md) | Document pédagogique complet — phases 1 à 4 avec exemples concrets du projet |
+| [explication_6_Journee_IA.md](explication_6_Journee_IA.md) | Document pédagogique complet — phases 1 à 4 avec exemples concrets du projet |
 
 ---
 

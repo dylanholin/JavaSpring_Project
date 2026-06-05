@@ -285,7 +285,13 @@ JavaSpring_Project/
 │   ├── pom.xml                ← Maven
 │   ├── README.md              ← Documentation spécifique
 │   └── .gitignore             ← Git ignore spécifique
-├── explication4.md            ← Documentation pédagogique itération 4
+├── docs/
+│   ├── explication_1_Introduction.md       ← Itération 1
+│   ├── explication_2_API_JeuDePlateau.md ← Itération 2
+│   ├── explication_3_Persistance.md      ← Itération 3
+│   ├── explication_4_GestionDesUtilisateurs.md ← Itération 4
+│   ├── explication_5_SpringSecurityJWT.md  ← Itération 5
+│   └── explication_6_Journee_IA.md         ← Itération 6
 ├── suivi.md                   ← Suivi de progression
 └── AGENTS.md                  ← Ce fichier (règles pour l'IA)
 ```

@@ -15,7 +15,7 @@
 - **Tests** : 60 tests (api) + 14 tests (user-api) — Golden Master
 - **Sécurité** : Spring Security + JWT (itération 5) — authentification stateless, BCrypt, rôles
 - **Moteur de jeu** : bibliothèque externe `square-games-engine` (JAR fourni, code source non modifiable)
-- **Documentation pédagogique** : [explication6.md](explication6.md) — méthodologie d'assistance IA sur le projet (itération 6)
+- **Documentation pédagogique** : [explication_6_Journee_IA.md](explication_6_Journee_IA.md) — méthodologie d'assistance IA sur le projet (itération 6)
 
 ---
 
@@ -489,7 +489,7 @@ Cela impose des contraintes importantes :
 | **api (jeux)** : Duplication de la sécurité JWT (`JwtService`, `JwtAuthenticationFilter`) | `common/security/*` |
 | **Tests user-api** : Mis à jour pour JWT (14/14 passent) | `UserControllerIntegrationTest.java` |
 | **Tests api** : Réécrits pour JWT, **tous passent** | `GameControllerIntegrationTest`, `ConnectFourAndTaquinIntegrationTest`, `JwtAuthContractTest` |
-| **Documentation** | `explication5.md`, `suivi.md`, `README.md` |
+| **Documentation** | `explication_5_SpringSecurityJWT.md`, `suivi.md`, `README.md` |
 
 ### État des tests (05/06/2026)
 

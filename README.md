@@ -243,11 +243,12 @@ JavaSpring_Project/
 ├── img/                              ← Captures d'écran du projet
 ├── AGENTS.md                          ← Règles de travail pour l'IA
 ├── docs/                              ← Documentation pédagogique
-│   ├── explication.md                  ← Itération 1
-│   ├── explication2.md                 ← Itération 2
-│   ├── explication3.md                 ← Itération 3 (persistance)
-│   ├── explication4.md                 ← Itération 4 (utilisateurs et sécurité)
-│   ├── explication5.md                 ← Itération 5 (sécurisation JWT et Spring Security)
+│   ├── explication_1_Introduction.md          ← Itération 1
+│   ├── explication_2_API_JeuDePlateau.md      ← Itération 2
+│   ├── explication_3_Persistance.md            ← Itération 3 (persistance)
+│   ├── explication_4_GestionDesUtilisateurs.md ← Itération 4 (utilisateurs et sécurité)
+│   ├── explication_5_SpringSecurityJWT.md     ← Itération 5 (sécurisation JWT et Spring Security)
+│   ├── explication_6_Journee_IA.md            ← Itération 6 (méthodologie IA)
 │   ├── audit-technique.md              ← Audit technique du projet
 │   ├── lexique-concepts.md            ← Lexique des concepts Spring Boot
 │   ├── start_project.md                ← Guide de démarrage (Fedora, Ubuntu, Windows)

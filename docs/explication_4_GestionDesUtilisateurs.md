@@ -351,7 +351,7 @@ class GameControllerIntegrationTest {
 
 ## ⚠️ Attention — Les exemples curl de l'itération 3 sont obsolètes
 
-Depuis l'itération 4.2, le header `X-UserId` est **obligatoire** sur les endpoints `/games` (POST, GET) et `/games/{id}/moves` (POST). Les exemples curl de `explication3.md` ne l'incluent pas et retourneront désormais `400 Bad Request`.
+Depuis l'itération 4.2, le header `X-UserId` est **obligatoire** sur les endpoints `/games` (POST, GET) et `/games/{id}/moves` (POST). Les exemples curl de `explication_3_Persistance.md` ne l'incluent pas et retourneront désormais `400 Bad Request`.
 
 **Exemple mis à jour pour POST /games** :
 ```bash
