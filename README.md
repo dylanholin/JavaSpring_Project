@@ -6,7 +6,7 @@ Application de jeux de plateau (TicTacToe, ConnectFour, Taquin) développée en 
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5-6DB33F?logo=springboot)](https://spring.io/projects/spring-boot)
 [![Maven](https://img.shields.io/badge/Maven-3.9-C71A36?logo=apachemaven)](https://maven.apache.org/)
 [![H2](https://img.shields.io/badge/Database-H2-0078D4)](https://h2database.com/)
-[![Tests](https://img.shields.io/badge/tests-70%20passing-brightgreen)](docs/start_project.md)
+[![Tests](https://img.shields.io/badge/tests-74%20passing-brightgreen)](docs/start_project.md)
 [![Microservices](https://img.shields.io/badge/architecture-microservices-blue)](README.md#architecture)
 
 ## Sommaire
@@ -29,9 +29,7 @@ Ce projet est composé de **deux applications Spring Boot indépendantes** (arch
 | `api_java_3_5/api` | **8080** | Gestion des parties de jeux (TicTacToe, ConnectFour, Taquin) |
 | `user-api` | **8081** | Gestion des utilisateurs (CRUD, validation) |
 
-Les deux applications communiquent via REST : l'app de jeux appelle user-api pour valider l'identité du joueur (`X-UserId`).
-
-Communication inter-services : `api` appelle `GET http://localhost:8081/users/{id}/valid` via RestClient (Spring Boot 3.2+).
+Depuis l'itération 5, l'authentification repose sur **JWT** (JSON Web Token) : le client se connecte sur `user-api` pour obtenir un token, puis le présente à chaque requête via `Authorization: Bearer <token>`. L'app de jeux valide le token **localement** sans appel réseau vers `user-api`.
 
 ### Organisation interne : architecture hexagonale (Ports & Adapters)
 
@@ -67,6 +65,8 @@ Même logique :
 - `UserValidator` (interface, dans `application/`) = le métier dit « j'ai besoin de valider un utilisateur ».
 - `RestUserValidator` (dans `infrastructure/`) = le *comment* technique : un appel HTTP sortant via `RestClient`. Tout appel réseau vers un système externe est, par nature, de l'infrastructure. Il est remplaçable (on pourrait écrire un `LocalUserValidator` pour les tests, par exemple).
 
+> 📌 **Évolution** : dans l'itération 5, `UserValidator` et `RestUserValidator` ont été supprimés et remplacés par un mécanisme JWT. La validation utilisateur est maintenant implicite : si le token JWT est valide, l'utilisateur existe (il a été créé dans user-api). L'app de jeux n'appelle plus user-api à chaque requête.
+
 **Avantages de ce découpage**
 
 - Le cœur métier (`application/`) est testable en isolation : on mocke les ports (`UserValidator`, `GameDao`).
@@ -94,7 +94,7 @@ La configuration se fait via `application.properties` avec des profils Spring. A
 | Propriété | Exemple | Description |
 |-----------|---------|-------------|
 | `spring.profiles.active` | `h2` | Profil actif : `h2` (défaut) ou `mysql` (production) |
-| `user.service.url` | `http://localhost:8081` | URL du service utilisateurs |
+| `jwt.secret` | `SquareGamesSecret...` | Clé secrète partagée pour valider les JWT (doit être identique dans user-api) |
 | `game.tictactoe.default-player-count` | `2` | Nombre de joueurs par défaut pour TicTacToe |
 | `game.tictactoe.default-board-size` | `3` | Taille de grille par défaut pour TicTacToe |
 | `game.connectfour.default-player-count` | `2` | Nombre de joueurs par défaut pour ConnectFour |
@@ -110,6 +110,8 @@ La configuration se fait via `application.properties` avec des profils Spring. A
 | `spring.datasource.url` | `jdbc:h2:file:./data/userdb` | URL de la base H2 (fichier) |
 | `spring.datasource.username` | `sa` | Identifiant base de données |
 | `spring.datasource.password` | (vide) | Mot de passe base de données |
+| `jwt.secret` | `SquareGamesSecret...` | Clé secrète pour signer les JWT (doit être identique dans api) |
+| `jwt.expiration` | `86400000` | Durée de validité du token en millisecondes (24h) |
 
 ---
 
@@ -133,14 +135,16 @@ Les deux applications utilisent **H2 en mode fichier** par défaut (profil `h2`)
 
 > ⚠️ **Les deux applications doivent être démarrées** avant de commencer (voir [docs/start_project.md](docs/start_project.md)).
 >
+> **Authentification** : depuis l'itération 5, toutes les requêtes vers l'app de jeux nécessitent un token JWT dans l'entête `Authorization: Bearer <token>`.
+>
 > **Persistance** : les parties de jeux et les utilisateurs survivent au redémarrage (H2 fichier pour les deux applications).
 
-### Étape 1 : Créer un utilisateur
+### Étape 1 : Créer un compte utilisateur
 
 ```bash
 curl -X POST http://localhost:8081/users \
   -H "Content-Type: application/json" \
-  -d '{"name":"Alice","email":"alice@example.com"}'
+  -d '{"name":"Alice","email":"alice@example.com","password":"monMotDePasse"}'
 ```
 
 Exemple de réponse :
@@ -153,9 +157,26 @@ Exemple de réponse :
 }
 ```
 
-> 📌 **Copie le champ `id`** de cette réponse : c'est l'identifiant utilisateur. Tu en auras besoin à l'étape 3.
+### Étape 2 : Se connecter pour obtenir un JWT
 
-### Étape 2 : Voir les jeux disponibles
+```bash
+curl -X POST http://localhost:8081/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"alice@example.com","password":"monMotDePasse"}'
+```
+
+Exemple de réponse :
+```json
+{
+  "token": "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIzYzllYWJiZi..."
+}
+```
+
+> 📌 **Copie le champ `token`** : tu devras l'envoyer dans chaque requête suivante.
+
+### Étape 3 : Voir les jeux disponibles
+
+Le catalogue est public (pas de JWT requis) :
 
 ```bash
 curl http://localhost:8080/games/catalog
@@ -163,14 +184,14 @@ curl http://localhost:8080/games/catalog
 
 Jeux disponibles : `tictactoe`, `connect4`, `15 puzzle`
 
-### Étape 3 : Créer une partie
+### Étape 4 : Créer une partie
 
-Remplace `{USER_ID}` par le champ `id` copié à l'étape 1 :
+Remplace `{TOKEN}` par le token JWT copié à l'étape 2 :
 
 ```bash
 curl -X POST http://localhost:8080/games \
   -H "Content-Type: application/json" \
-  -H "X-UserId: {USER_ID}" \
+  -H "Authorization: Bearer {TOKEN}" \
   -d '{"gameType":"tictactoe","playerCount":2,"boardSize":3}'
 ```
 
@@ -187,40 +208,37 @@ Exemple de réponse :
 ```
 
 > 📌 **Copie le champ `id`** : c'est le `GAME_ID`, tu en auras besoin pour les coups.
-> 📌 **Copie le champ `currentPlayerId`** : c'est l'UUID du joueur dont c'est le tour. Il doit correspondre à ton `USER_ID` pour que tu puisses jouer.
 
-### Étape 4 : Voir les coups possibles
-
-Remplace `{GAME_ID}` par le champ `id` copié à l'étape 3 :
+### Étape 5 : Voir les coups possibles
 
 ```bash
-curl http://localhost:8080/games/{GAME_ID}/moves
+curl http://localhost:8080/games/{GAME_ID}/moves \
+  -H "Authorization: Bearer {TOKEN}"
 ```
 
-### Étape 5 : Jouer un coup
-
-Remplace `{GAME_ID}` par le champ `id` et `{CURRENT_PLAYER_ID}` par le champ `currentPlayerId` copiés à l'étape 3 :
+### Étape 6 : Jouer un coup
 
 ```bash
 curl -X POST http://localhost:8080/games/{GAME_ID}/moves \
   -H "Content-Type: application/json" \
-  -H "X-UserId: {CURRENT_PLAYER_ID}" \
+  -H "Authorization: Bearer {TOKEN}" \
   -d '{"tokenName":"X","row":0,"col":0}'
 ```
 
-> ⚠️ Si `X-UserId` ne correspond pas au `currentPlayerId`, la réponse est `403 Forbidden`.
+> ⚠️ Si le token JWT ne correspond pas au `currentPlayerId` de la partie, la réponse est `403 Forbidden`.
 
-### Étape 6 : Voir l'état de la partie
+### Étape 7 : Voir l'état de la partie
 
 ```bash
-curl http://localhost:8080/games/{GAME_ID}
+curl http://localhost:8080/games/{GAME_ID} \
+  -H "Authorization: Bearer {TOKEN}"
 ```
 
-### Étape 7 : Lister mes parties
+### Étape 8 : Lister mes parties
 
 ```bash
 curl http://localhost:8080/games \
-  -H "X-UserId: {USER_ID}"
+  -H "Authorization: Bearer {TOKEN}"
 ```
 
 ---
@@ -248,6 +266,11 @@ JavaSpring_Project/
 │   │   ├── HeartbeatController.java  ← Endpoint /heartbeat (itération 1)
 │   │   ├── HeartbeatSensor.java      ← Interface capteur heartbeat
 │   │   ├── RandomHeartbeat.java      ← Implémentation aléatoire du capteur
+│   │   ├── common/                   ← Transverse : configuration, sécurité
+│   │   │   └── security/
+│   │   │       ├── SecurityConfig.java           ← Spring Security stateless + JWT filter
+│   │   │       ├── JwtService.java               ← Validation des tokens JWT
+│   │   │       └── JwtAuthenticationFilter.java ← Extraction userId depuis Bearer
 │   │   └── game/                     ← Feature "jeu" (organisée par couches)
 │   │       ├── api/                  ← Couche REST (contrôleurs + DTO)
 │   │       │   ├── GameController.java          ← CRUD parties + mouvements
@@ -268,8 +291,7 @@ JavaSpring_Project/
 │   │       │   ├── TaquinPlugin.java            ← Plugin Taquin (15 puzzle)
 │   │       │   ├── GameCatalog.java             ← Interface du catalogue de jeux
 │   │       │   ├── GameCatalogImpl.java         ← Implémentation du catalogue
-│   │       │   ├── GameDao.java                ← Interface du DAO
-│   │       │   └── UserValidator.java          ← Interface de validation utilisateur
+│   │       │   └── GameDao.java                ← Interface du DAO
 │   │       ├── domain/               ← Modèle métier (entités JPA, repositories)
 │   │       │   ├── GameEntity.java              ← Entité JPA d'une partie
 │   │       │   ├── GameEntityRepository.java   ← Repository Spring Data JPA
@@ -279,8 +301,7 @@ JavaSpring_Project/
 │   │           ├── JdbcGameDao.java              ← DAO JDBC (SQL explicite, limitation d'état)
 │   │           ├── JpaGameDao.java               ← DAO JPA (@Primary, persistance complète)
 │   │           ├── ConnectFourStateAdapter.java  ← Normalise les positions ConnectFour pour reconstruction
-│   │           ├── GameStateWrapper.java         ← Préserve id et currentPlayerId en fallback
-│   │           └── RestUserValidator.java        ← Appelle user-api via RestClient
+│   │           └── GameStateWrapper.java         ← Préserve id et currentPlayerId en fallback
 │   ├── src/main/resources/
 │   │   ├── application.properties        ← Config principale (profil h2 par défaut)
 │   │   ├── application-h2.properties    ← Profil H2 fichier (développement)
@@ -291,6 +312,19 @@ JavaSpring_Project/
 ├── user-api/                         ← Application utilisateurs (port 8081)
 │   ├── src/main/java/com/squaregames/user/
 │   │   ├── UserApiApplication.java   ← Classe principale
+│   │   ├── auth/                     ← Feature "authentification" (itération 5)
+│   │   │   ├── api/
+│   │   │   │   ├── AuthController.java         ← POST /auth/login (retourne JWT)
+│   │   │   │   ├── LoginRequest.java           ← Payload de connexion
+│   │   │   │   └── LoginResponse.java          ← Contient le token JWT
+│   │   ├── common/                   ← Transverse : configuration, exceptions, sécurité
+│   │   │   ├── exception/
+│   │   │   │   └── GlobalExceptionHandler.java ← Préserve codes HTTP 400/409 malgré Spring Security
+│   │   │   └── security/
+│   │   │       ├── SecurityConfig.java         ← Spring Security stateless + @EnableMethodSecurity
+│   │   │       ├── JwtService.java             ← Génération et validation des tokens JWT
+│   │   │       ├── JwtAuthenticationFilter.java ← Extraction userId + rôles depuis Bearer
+│   │   │       └── CustomUserDetailsService.java ← Charge les utilisateurs depuis le DAO
 │   │   └── user/                     ← Feature "utilisateur"
 │   │       ├── api/                  ← Couche REST
 │   │       │   ├── UserController.java          ← CRUD utilisateurs + validation
@@ -302,7 +336,7 @@ JavaSpring_Project/
 │   │       │   ├── UserServiceImpl.java         ← Implémentation du service
 │   │       │   └── UserDao.java                ← Interface du DAO utilisateur
 │   │       ├── domain/               ← Modèle métier
-│   │       │   ├── User.java                    ← Entité métier utilisateur
+│   │       │   ├── User.java                    ← Entité métier utilisateur (password, role)
 │   │       │   └── UserRepository.java         ← Repository Spring Data JPA
 │   │       └── infrastructure/       ← Couche persistance
 │   │           └── JpaUserDao.java             ← Implémentation JPA du DAO
@@ -317,7 +351,7 @@ JavaSpring_Project/
 │   ├── explication2.md                 ← Itération 2
 │   ├── explication3.md                 ← Itération 3 (persistance)
 │   ├── explication4.md                 ← Itération 4 (utilisateurs et sécurité)
-│   ├── explication5.md                 ← Itération 5 (à venir)
+│   ├── explication5.md                 ← Itération 5 (sécurisation JWT et Spring Security)
 │   ├── audit-technique.md              ← Audit technique du projet
 │   ├── lexique-concepts.md            ← Lexique des concepts Spring Boot
 │   ├── start_project.md                ← Guide de démarrage (Fedora, Ubuntu, Windows)

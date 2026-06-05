@@ -1,6 +1,6 @@
 # Suivi du projet SquareGames
 
-Dernière mise à jour : 04/06/2026
+Dernière mise à jour : 05/06/2026
 
 ---
 
@@ -78,5 +78,5 @@ Dernière mise à jour : 04/06/2026
 | Étape | Statut |
 |---|---|
 | Tests user-api mis à jour (JWT, login, `@PreAuthorize`) | ✅ |
-| Tests api (jeux) mis à jour (`Authorization: Bearer`, suppression `X-UserId`) | ✅ (en attente de validation compilation) |
+| Tests api (jeux) mis à jour (`Authorization: Bearer`, suppression `X-UserId`) | ✅ (60/60 — correctif filtre JWT `addFilterBefore`) |
 | Tests de contrat JWT (JwtAuthContractTest, UserValidationContractTest) | ✅ |

@@ -3,7 +3,7 @@
 > Document destiné à une IA ou un développeur futur pour comprendre l'état actuel du projet,
 > ses forces, ses faiblesses, et les améliorations prioritaires à réaliser.
 >
-> Dernière mise à jour : 29/05/2026
+> Dernière mise à jour : 05/06/2026
 
 ---
 
@@ -12,7 +12,8 @@
 - **Langage** : Java 21+ / Spring Boot 3.5
 - **Architecture** : Microservices (2 apps) + couches par feature (api/application/domain/infrastructure)
 - **Persistance** : JPA (Hibernate) + H2 fichier (dev) / MySQL (profil production)
-- **Tests** : 34 tests (api) + 10 tests (user-api) — Golden Master
+- **Tests** : 60 tests (api) + 14 tests (user-api) — Golden Master
+- **Sécurité** : Spring Security + JWT (itération 5) — authentification stateless, BCrypt, rôles
 - **Moteur de jeu** : bibliothèque externe `square-games-engine` (JAR fourni, code source non modifiable)
 
 ---

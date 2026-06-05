@@ -759,3 +759,30 @@ Avec Spring Security activé, la console H2 est bloquée par défaut car elle ut
 ### TestRestTemplate et Spring Security
 
 `TestRestTemplate` auto-configuré par Spring Boot tente parfois d'envoyer une authentification basique (Basic Auth) par défaut. La propriété `spring.boot.testcontext.resttemplate.use-basic-auth=false` dans `user-api/src/test/resources/application.properties` désactive ce comportement pour éviter les conflits avec le filtre JWT.
+
+---
+
+## Correctif post-implémentation — Ordre du filtre JWT dans l'app de jeux
+
+### Problème identifié (05/06/2026)
+
+Après l'implémentation initiale, **5 tests échouaient** dans l'app de jeux avec des réponses `401 UNAUTHORIZED` là où `403 FORBIDDEN`, `404 NOT_FOUND` ou `400 BAD_REQUEST` étaient attendus.
+
+**Cause** : le filtre JWT était enregistré avec `addFilterAfter(jwtAuthenticationFilter, SecurityContextHolderFilter.class)`. Cela le plaçait **trop tard** dans la chaîne de filtres Spring Security — après la vérification d'authentification. Résultat : Spring Security bloquait la requête avec 401 avant que le filtre JWT ait eu le temps de peupler le `SecurityContext`.
+
+De plus, l'endpoint `/error` (utilisé par Spring Boot pour retourner les erreurs métier 404/400/403) n'était pas autorisé, ce qui causait une réécriture des codes d'erreur en 401 lors du passage par le `BasicErrorController`.
+
+**Correction appliquée** dans `api_java_3_5/api/src/main/java/com/squaregames/api/common/security/SecurityConfig.java` :
+
+```java
+// Avant (incorrect) :
+.addFilterAfter(jwtAuthenticationFilter, SecurityContextHolderFilter.class);
+
+// Après (correct) :
+.requestMatchers("/error").permitAll()   // ← permet aux erreurs métier de traverser
+.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+```
+
+**Règle retenue** : le filtre JWT doit toujours être enregistré avec `addFilterBefore(UsernamePasswordAuthenticationFilter.class)` pour garantir que le `SecurityContext` est peuplé avant que Spring Security évalue les autorisations.
+
+**Résultat** : 60/60 tests passent après correction.

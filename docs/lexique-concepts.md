@@ -528,7 +528,7 @@ public RestUserValidator(RestClient.Builder restClientBuilder,
 ### Endpoints GameController
 | Verbe | URL | Méthode Java | Description |
 |-------|-----|--------------|-------------|
-| `POST` | `/games` | `createGame()` | Créer une partie (header X-UserId requis) |
+| `POST` | `/games` | `createGame()` | Créer une partie (header `Authorization: Bearer <JWT>` requis) |
 | `GET` | `/games` | `listGames()` | Lister mes parties |
 | `GET` | `/games/{gameId}` | `getGame()` | Détails d'une partie |
 | `GET` | `/games/{gameId}/moves` | `getPossibleMoves()` | Coups possibles |
@@ -550,8 +550,8 @@ public RestUserValidator(RestClient.Builder restClientBuilder,
 public class GameController {
 
     @PostMapping  // ← POST /games
-    public GameDto createGame(@RequestBody GameCreationParams params,
-                              @RequestHeader("X-UserId") String userId) { ... }
+    public GameDto createGame(@RequestBody GameCreationParams params) { ... }
+    // Le userId est extrait du JWT via SecurityContextHolder
 
     @GetMapping("/{gameId}")  // ← GET /games/{uuid}
     public GameDto getGame(@PathVariable UUID gameId) { ... }
