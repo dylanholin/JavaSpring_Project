@@ -354,6 +354,37 @@ Règles pour les tests
 - Utiliser verifyNoInteractions() pour prouver qu'un composant n'est pas appelé en cas d'erreur amont
 - Lire les tokens disponibles via /moves plutôt que coder en dur "X"/"0" (dépend de l'ordre interne du moteur)
 
+Principes anti-fragilité des tests (leçons du TDD mécanique)
+
+> Inspiré de la critique : le TDD n'est pas une question de "quand" écrire le test, mais un outil de design.
+> Un test doit protéger le comportement, pas figer l'implémentation.
+
+Privilégier les tests d'intégration pour les changements significatifs
+- Les refactorings (DAO, JDBC → JPA, etc.) doivent être validés par les tests d'intégration
+- Un test d'intégration qui passe garantit que le contrat externe est préservé
+- Les tests unitaires seuls peuvent passer alors que le système réel est cassé
+
+Accepter les tests unitaires à mocks uniquement pour la logique complexe isolée
+- Les mocks sont utiles pour : logique algorithmique pure, gestion d'erreurs, chemins alternatifs
+- Éviter les mocks qui dupliquent l'implémentation (when(x).thenReturn(y) où y est calculé comme en prod)
+- Un test qui mock trop ne teste que lui-même
+
+Se méfier des tests qui cassent sans bug
+- Si changer une ligne de code cassent 10 tests sans bug réel, les tests assertent l'implémentation
+- Signe d'un problème : le test vérifie "comment" (méthode appelée) plutôt que "quoi" (résultat)
+- Solution : remplacer les assertions d'interaction (verify) par des assertions d'état/behaviour
+
+Toujours compléter un test unitaire par un test d'intégration
+- Le test unitaire garantit la logique locale, le test d'intégration garantit le wiring réel
+- L'IA peut générer impl + test unitaire cohérents mais faux → le test d'intégration est le garde-fou
+- Règle : pas de test unitaire seul sans justification (ex: logique complexe sans dépendance externe)
+
+Anti-patterns à éviter
+- "Test d'implémentation" : vérifie que telle méthode a été appelée avec tels paramètres
+- "Mock festival" : tous les collaborateurs sont mockés, le test n'a plus de valeur
+- "Anticipation non justifiée" : le test passe mais le design n'a pas émergé du besoin
+- "Mauvais niveau" : tester le domaine à nu quand la frontière de sens est l'API REST
+
 Règle finale
 
 Quand plusieurs solutions existent, l'IA doit choisir celle qui est la plus sûre, la plus simple à relire, la plus facile à tester et la moins intrusive pour le projet.
