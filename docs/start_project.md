@@ -62,7 +62,7 @@ cd api_java_3_5/api
 ./mvnw spring-boot:run
 ```
 
-> ⚠️ Démarrer **user-api en premier** : l'app de jeux en a besoin pour valider les utilisateurs.
+> ⚠️ Démarrer **user-api en premier** : l'endpoint `/auth/login` (émission des JWT) est sur user-api. L'app de jeux valide les tokens localement mais a besoin de user-api démarré pour que les joueurs puissent se connecter.
 
 ### 6. Lancer les tests
 
@@ -71,7 +71,7 @@ cd api_java_3_5/api
 cd api_java_3_5/api
 ./mvnw test
 
-# Tests de user-api (10 tests)
+# Tests de user-api (14 tests)
 cd user-api
 ./mvnw test
 ```
@@ -131,7 +131,7 @@ cd api_java_3_5/api
 ./mvnw spring-boot:run
 ```
 
-> ⚠️ Démarrer **user-api en premier** : l'app de jeux en a besoin pour valider les utilisateurs.
+> ⚠️ Démarrer **user-api en premier** : l'endpoint `/auth/login` (émission des JWT) est sur user-api. L'app de jeux valide les tokens localement mais a besoin de user-api démarré pour que les joueurs puissent se connecter.
 
 ### 6. Lancer les tests
 
@@ -140,7 +140,7 @@ cd api_java_3_5/api
 cd api_java_3_5/api
 ./mvnw test
 
-# Tests de user-api (10 tests)
+# Tests de user-api (14 tests)
 cd user-api
 ./mvnw test
 ```
@@ -227,7 +227,7 @@ cd api_java_3_5\api
 .\mvnw.cmd spring-boot:run
 ```
 
-> ⚠️ Démarrer **user-api en premier** : l'app de jeux en a besoin pour valider les utilisateurs.
+> ⚠️ Démarrer **user-api en premier** : l'endpoint `/auth/login` (émission des JWT) est sur user-api. L'app de jeux valide les tokens localement mais a besoin de user-api démarré pour que les joueurs puissent se connecter.
 
 ### 7. Lancer les tests
 
@@ -236,7 +236,7 @@ cd api_java_3_5\api
 cd api_java_3_5\api
 .\mvnw.cmd test
 
-# Tests de user-api (10 tests)
+# Tests de user-api (14 tests)
 cd user-api
 .\mvnw.cmd test
 ```

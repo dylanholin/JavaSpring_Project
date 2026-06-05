@@ -29,7 +29,7 @@ game/
 ├── api/            ← Contrôleurs REST + DTO (entrée/sortie HTTP)
 ├── application/    ← Services métier + interfaces (GameService, GameDao, GamePlugin)
 ├── domain/         ← Entités JPA + Repository Spring Data
-└── infrastructure/ ← Implémentations techniques (JpaGameDao, RestUserValidator)
+└── infrastructure/ ← Implémentations techniques (JpaGameDao, JdbcGameDao, InMemoryGameDao)
 ```
 
 **Pourquoi c'est bien** :
@@ -70,7 +70,7 @@ où l'objet est stocké par référence).
 
 ### 4. Tests Golden Master
 
-34 tests couvrant :
+60 tests couvrant :
 - Intégration API complète (CRUD, coups, codes HTTP, partie TicTacToe entière)
 - Contrat inter-services avec WireMock
 - Tests unitaires du service avec Mockito
@@ -487,43 +487,32 @@ Cela impose des contraintes importantes :
 | **api (jeux)** : `GameController` utilise `SecurityContextHolder` au lieu de `X-UserId` | `GameController.java` |
 | **api (jeux)** : Duplication de la sécurité JWT (`JwtService`, `JwtAuthenticationFilter`) | `common/security/*` |
 | **Tests user-api** : Mis à jour pour JWT (14/14 passent) | `UserControllerIntegrationTest.java` |
-| **Tests api** : Réécrits pour JWT, mais **échecs persistants** | `GameControllerIntegrationTest`, `ConnectFourAndTaquinIntegrationTest`, `JwtAuthContractTest` |
-| **Documentation** | `explication5.md`, `suivi.md` |
+| **Tests api** : Réécrits pour JWT, **tous passent** | `GameControllerIntegrationTest`, `ConnectFourAndTaquinIntegrationTest`, `JwtAuthContractTest` |
+| **Documentation** | `explication5.md`, `suivi.md`, `README.md` |
 
-### État des tests
+### État des tests (05/06/2026)
 
 - **user-api** : `BUILD SUCCESS` — 14/14 tests passent
-- **api (jeux)** : `BUILD FAILURE` — 5 tests échouent avec `401 UNAUTHORIZED` alors que le serveur retourne `404 NOT_FOUND` (d'après les logs du filtre JWT)
+- **api (jeux)** : `BUILD SUCCESS` — 60/60 tests passent
 
-### 🔴 Point bloquant : `TestRestTemplate` retourne 401 malgré un 404 du serveur
+### Correctif post-implémentation — Ordre du filtre JWT
 
-**Symptôme** :
-- Les logs du `JwtAuthenticationFilter` montrent que le token est reçu, validé, l'authentification est mise dans le `SecurityContextHolder`, et la chaîne de filtres retourne `status=404`.
-- Mais le test Java reçoit `401 UNAUTHORIZED`.
+**Problème identifié** : le filtre JWT était enregistré avec `addFilterAfter(jwtAuthenticationFilter, SecurityContextHolderFilter.class)`. Cela le plaçait **trop tard** dans la chaîne de filtres — après la vérification d'authentification par Spring Security. Résultat : les requêtes avec un JWT valide étaient bloquées avec 401 avant d'atteindre le contrôleur.
 
-**Hypothèses** :
-1. **`TestRestTemplate` auto-configuré par Spring Boot envoie une requête de "challenge" basic auth** (requête sans header, reçoit 401, puis requête avec JWT reçoit 404). Le test verrait le 401 de la première requête au lieu du 404 de la deuxième.
-2. **Position du filtre JWT dans la chaîne Spring Security** : `addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)` ne fonctionne pas correctement quand `UsernamePasswordAuthenticationFilter` n'existe pas (pas de `formLogin()`). Le filtre pourrait s'exécuter après `AuthorizationFilter`.
-3. **`UserDetailsServiceAutoConfiguration` crée un `InMemoryUserDetailsManager`** qui entre en conflit avec l'authentification JWT. Cela a été désactivé dans `ApiApplication` mais le problème persiste.
+De plus, l'endpoint `/error` (utilisé par Spring Boot pour retourner les erreurs métier) n'était pas autorisé, ce qui provoquait une réécriture des codes 404/400/403 en 401 lors du passage par `BasicErrorController`.
 
-**Ce qui a été essayé sans succès** :
-- Désactivation de `UserDetailsServiceAutoConfiguration`
-- Changement du type de token d'authentification (`UsernamePasswordAuthenticationToken` → `PreAuthenticatedAuthenticationToken`)
-- Changement de la position du filtre (`addFilterBefore` → `addFilterAfter` avec `SecurityContextHolderFilter`)
-- Remplacement de `new HttpEntity<>(authHeaders())` par `new HttpEntity<>(null, authHeaders())` pour éviter l'ambiguïté Java
-- Désactivation du basic auth auto de `TestRestTemplate` via `spring.boot.testcontext.resttemplate.use-basic-auth=false`
-- Utilisation d'un `TestRestTemplate` manuel (`new TestRestTemplate()`) avec URLs absolues
+**Correction appliquée** dans `api_java_3_5/api/src/main/java/com/squaregames/api/common/security/SecurityConfig.java` :
 
-**Facteur aggravant** :
-- Le paramètre `Cwd` de `run_command` n'a pas fonctionné correctement sur Windows/PowerShell. Plusieurs commandes `mvnw.cmd` ont été exécutées dans le mauvais répertoire (`user-api` au lieu de `api_java_3_5/api`), ce qui a faussé les diagnostics initiaux.
+```java
+// Avant (incorrect) :
+.addFilterAfter(jwtAuthenticationFilter, SecurityContextHolderFilter.class);
 
-**Piste à creuser** :
-- Utiliser `WebTestClient` (WebFlux) à la place de `TestRestTemplate` pour les tests d'intégration
-- Ou vérifier si `TestRestTemplate` suit une redirection qui retourne 401
-- Ou inspecter la réponse HTTP brute avec un proxy/intercepteur pour voir si deux requêtes sont envoyées
+// Après (correct) :
+.requestMatchers("/error").permitAll()   // ← permet aux erreurs métier de traverser
+.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+```
 
-**Recommandation** :
-- **Ne pas continuer à tâtonner**. La solution est probablement soit un changement de l'outil de test (passer à `WebTestClient`), soit une configuration manuelle du `RestTemplate` sans comportement caché de `TestRestTemplate`.
+**Règle retenue** : le filtre JWT doit toujours être enregistré avec `addFilterBefore(UsernamePasswordAuthenticationFilter.class)` pour garantir que le `SecurityContext` est peuplé avant que Spring Security évalue les autorisations.
 
 ---
 
