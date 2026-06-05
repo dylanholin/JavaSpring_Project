@@ -10,7 +10,12 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Implémentation de UserValidator qui appelle l'API user-api via RestClient.
+ *
+ * @deprecated Remplacé par la validation JWT locale (itération 5).
+ *             L'authentification utilisateur est maintenant implicite : si le JWT est valide,
+ *             l'utilisateur existe (il a été créé dans user-api).
  */
+@Deprecated
 @Component
 public class RestUserValidator implements UserValidator {
 

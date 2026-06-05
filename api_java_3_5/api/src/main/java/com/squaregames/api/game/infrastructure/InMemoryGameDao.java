@@ -10,8 +10,10 @@ import java.util.*;
  * Implémentation en mémoire du DAO.
  * Utilise une HashMap pour stocker les parties.
  * Les données sont perdues au redémarrage de l'application.
- * N'est plus @Primary — JpaGameDao est l'implémentation par défaut.
+ *
+ * @deprecated Remplacé par {@link JpaGameDao} (itération 3.4). Conservé pour valeur pédagogique.
  */
+@Deprecated
 @Repository
 public class InMemoryGameDao implements GameDao {
 

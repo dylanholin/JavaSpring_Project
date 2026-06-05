@@ -23,8 +23,10 @@ import java.util.*;
  * ⚠️ Limitation : le moteur de jeu ne permet pas de reconstruire un Game
  * depuis une base de données relationnelle. Cette implémentation stocke
  * les métadonnées mais ne peut pas restaurer l'état complet d'une partie.
- * Pour une vraie persistance, utiliser JPA ou sérialisation JSON.
+ *
+ * @deprecated Remplacé par {@link JpaGameDao} (itération 3.4). Conservé pour valeur pédagogique.
  */
+@Deprecated
 @Repository
 public class JdbcGameDao implements GameDao {
 
