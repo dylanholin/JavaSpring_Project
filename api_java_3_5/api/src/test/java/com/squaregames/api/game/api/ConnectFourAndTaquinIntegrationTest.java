@@ -142,17 +142,17 @@ class ConnectFourAndTaquinIntegrationTest {
 
     @Test
     void taquin_shouldCreateGame() {
-        GameDto game = createGame("15 puzzle", 1, 3, PLAYER_A);
+        GameDto game = createGame("15 puzzle", 1, 4, PLAYER_A);
 
         assertThat(game.gameType()).isEqualTo("15 puzzle");
-        assertThat(game.boardSize()).isEqualTo(3);
+        assertThat(game.boardSize()).isEqualTo(4);
         assertThat(game.playerCount()).isEqualTo(1);
         assertThat(game.status()).isEqualTo("ONGOING");
     }
 
     @Test
     void taquin_shouldGetPossibleMoves() {
-        GameDto game = createGame("15 puzzle", 1, 3, PLAYER_A);
+        GameDto game = createGame("15 puzzle", 1, 4, PLAYER_A);
         UUID gameId = game.id();
 
         Collection<TokenMovesDto> moves = getMoves(gameId);
@@ -167,7 +167,7 @@ class ConnectFourAndTaquinIntegrationTest {
 
     @Test
     void taquin_shouldReturn403WhenWrongPlayerPlays() {
-        GameDto game = createGame("15 puzzle", 1, 3, PLAYER_A);
+        GameDto game = createGame("15 puzzle", 1, 4, PLAYER_A);
         UUID gameId = game.id();
 
         TokenMovesDto token = getFirstAvailableTokenInfo(gameId);
@@ -178,6 +178,21 @@ class ConnectFourAndTaquinIntegrationTest {
         assertThat(response.getStatusCode())
                 .as("Un joueur qui n'est pas dans la partie doit être rejeté")
                 .isIn(HttpStatus.FORBIDDEN, HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void taquin_shouldPlayMove() {
+        GameDto game = createGame("15 puzzle", 1, 4, PLAYER_A);
+        UUID gameId = game.id();
+
+        TokenMovesDto token = getFirstAvailableTokenInfo(gameId);
+        PositionDto target = token.allowedMoves().get(0);
+
+        ResponseEntity<String> response = playMoveRaw(gameId, PLAYER_A,
+                token.tokenName(), target.row(), target.col());
+        assertThat(response.getStatusCode())
+                .as("Le coup Taquin doit réussir")
+                .isEqualTo(HttpStatus.OK);
     }
 
     @Test

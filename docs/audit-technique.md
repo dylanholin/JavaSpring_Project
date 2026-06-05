@@ -594,7 +594,7 @@ De plus, l'endpoint `/error` (utilisé par Spring Boot pour retourner les erreur
 | 4 | GameCatalogImpl | ❌ | 🟡 Déjà couvert | Basse | `GameCatalogControllerTest` teste l'endpoint. Le service est simple. |
 | 5 | Entités JPA | ❌ | ❌ Pas de logique | — | Champs publics, pas de méthodes. Testées indirectement via `JpaGameDaoTest`. |
 | 6 | RestUserValidator | ❌ | ❌ Déjà couvert | — | `UserValidationContractTest` (WireMock) teste les 4 scénarios. |
-| 7 | **ConnectFour / Taquin intégration** | ✅ | Fait | — | 8 tests d'intégration. Ont révélé 3 bugs (voir ci-dessous). |
+| 7 | **ConnectFour / Taquin intégration** | ✅ | Fait | — | 9 tests d'intégration. Ont révélé 5 bugs (voir ci-dessous). |
 | 8 | ConnectFour reconstruction | ✅ | Fait | — | `ConnectFourMoveTest` : 5 tests unitaires (reconstruction, normalisation, allowedMoves). |
 | 9 | Persistance redémarrage | ❌ | 🟡 Complexe | Basse | Testé manuellement. Automatisation difficile (arrêt/redémarrage dans le test). |
 
@@ -624,3 +624,17 @@ De plus, l'endpoint `/error` (utilisé par Spring Boot pour retourner les erreur
   - Stockage de `currentPlayerId` dans `GameEntity` pour le préserver après reconstruction.
   - Suppression du tri des `playerIds` dans `convertToEntity` (tri lexicographique qui cassait l'alternance TicTacToe).
 - Impact : **TicTacToe, ConnectFour et Taquin sont utilisables après persistance JPA**.
+
+**BUG-4 (CORRIGÉ) — TaquinGame : distance de Manhattan incorrecte dans `areNeighbors()`**
+- Le calcul `(Math.abs(a.x() - b.x()) + Math.abs(a.y()) - b.y()) == 1` était faux pour la coordonnée `y`.
+- Conséquence : une tuile au-dessus de la case vide (`y < empty.y`) n'était jamais considérée comme voisine. Le coup échouait en `400 BAD_REQUEST` (`invalid position for token`).
+- La condition passait par hasard quand `y >= empty.y` (la majorité des positions aléatoires), d'où le caractère intermittent du bug.
+- **Correction** : `(Math.abs(a.x() - b.x()) + Math.abs(a.y() - b.y())) == 1`.
+- **Fichier** : `cda-java-spring-game-engine-main/.../TaquinGame.java`.
+
+**BUG-5 (CORRIGÉ) — GameServiceImpl.playMove : token introuvable pour les jeux sans remainingTokens**
+- `playMove` cherchait le token uniquement dans `game.getRemainingTokens()`.
+- Pour le **taquin**, les 15 tuiles sont posées sur le `board` dès la création ; `getRemainingTokens()` retourne un `Set` vide.
+- Conséquence : `400 BAD_REQUEST "Token introuvable"` dès le premier coup au taquin.
+- **Correction** : fallback sur `game.getBoard().values().stream()` si le token n'est pas trouvé dans `remainingTokens`.
+- **Fichier** : `api_java_3_5/api/.../GameServiceImpl.java`.
