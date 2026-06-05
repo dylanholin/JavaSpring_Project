@@ -252,9 +252,117 @@ cd user-api
 
 ---
 
-## Utiliser l'API
+## Jouer une partie : guide complet
 
-Une fois les deux applications démarrées, voir le guide complet dans le [README.md](../README.md#jouer-une-partie--guide-complet).
+> ⚠️ **Les deux applications doivent être démarrées** avant de commencer (voir les étapes ci-dessus).
+>
+> **Authentification** : depuis l'itération 5, toutes les requêtes vers l'app de jeux nécessitent un token JWT dans l'entête `Authorization: Bearer <token>`.
+>
+> **Persistance** : les parties de jeux et les utilisateurs survivent au redémarrage (H2 fichier pour les deux applications).
+
+### Étape 1 : Créer un compte utilisateur
+
+```bash
+curl -X POST http://localhost:8081/users \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Alice","email":"alice@example.com","password":"monMotDePasse"}'
+```
+
+Exemple de réponse :
+```json
+{
+  "id": "3c9eabbf-2bba-4c86-a453-98ee8cc101c4",
+  "name": "Alice",
+  "email": "alice@example.com",
+  "createdAt": "2026-05-26T10:00:00Z"
+}
+```
+
+### Étape 2 : Se connecter pour obtenir un JWT
+
+```bash
+curl -X POST http://localhost:8081/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"alice@example.com","password":"monMotDePasse"}'
+```
+
+Exemple de réponse :
+```json
+{
+  "token": "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIzYzllYWJiZi..."
+}
+```
+
+> 📌 **Copie le champ `token`** : tu devras l'envoyer dans chaque requête suivante.
+
+### Étape 3 : Voir les jeux disponibles
+
+Le catalogue est public (pas de JWT requis) :
+
+```bash
+curl http://localhost:8080/games/catalog
+```
+
+Jeux disponibles : `tictactoe`, `connect4`, `15 puzzle`
+
+### Étape 4 : Créer une partie
+
+Remplace `{TOKEN}` par le token JWT copié à l'étape 2 :
+
+```bash
+curl -X POST http://localhost:8080/games \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {TOKEN}" \
+  -d '{"gameType":"tictactoe","playerCount":2,"boardSize":3}'
+```
+
+Exemple de réponse :
+```json
+{
+  "id": "24f70b09-6104-4baa-97bf-1393959513fa",
+  "gameType": "tictactoe",
+  "playerCount": 2,
+  "boardSize": 3,
+  "status": "ONGOING",
+  "currentPlayerId": "3c9eabbf-2bba-4c86-a453-98ee8cc101c4"
+}
+```
+
+> 📌 **Copie le champ `id`** : c'est le `GAME_ID`, tu en auras besoin pour les coups.
+
+### Étape 5 : Voir les coups possibles
+
+```bash
+curl http://localhost:8080/games/{GAME_ID}/moves \
+  -H "Authorization: Bearer {TOKEN}"
+```
+
+### Étape 6 : Jouer un coup
+
+```bash
+curl -X POST http://localhost:8080/games/{GAME_ID}/moves \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {TOKEN}" \
+  -d '{"tokenName":"X","row":0,"col":0}'
+```
+
+> ⚠️ Si le token JWT ne correspond pas au `currentPlayerId` de la partie, la réponse est `403 Forbidden`.
+
+### Étape 7 : Voir l'état de la partie
+
+```bash
+curl http://localhost:8080/games/{GAME_ID} \
+  -H "Authorization: Bearer {TOKEN}"
+```
+
+### Étape 8 : Lister mes parties
+
+```bash
+curl http://localhost:8080/games \
+  -H "Authorization: Bearer {TOKEN}"
+```
+
+---
 
 ## Déploiement (suggestion)
 
